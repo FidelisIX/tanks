@@ -63,16 +63,6 @@ function broadcast(room, msg) {
   for (const p of room.players) if (p.ws.readyState === p.ws.OPEN) p.ws.send(data);
 }
 
-function roomInfo(room) {
-  return {
-    type: 'room',
-    code: room.code,
-    hostId: room.hostId,
-    state: room.state,
-    players: room.players.map((p) => ({ id: p.id, name: p.name, color: p.color, wins: p.wins })),
-  };
-}
-
 function freeColor(room) {
   return P.COLORS.find((c) => !room.players.some((p) => p.color === c)) || P.COLORS[0];
 }
@@ -82,11 +72,26 @@ function cleanName(name) {
   return n || 'Panzer';
 }
 
+function roomInfo(room) {
+  return {
+    type: 'room',
+    code: room.code,
+    hostId: room.hostId,
+    state: room.state, // 'lobby' | 'playing' | 'shop' | 'over'
+    rounds: room.rounds,
+    round: room.round,
+    shopTimeLeft: room.state === 'shop' ? Math.max(0, room.shopDeadline - Date.now()) : 0,
+    players: room.players.map((p) => ({
+      id: p.id, name: p.name, color: p.color, money: p.money, score: p.score, ready: p.ready, inv: p.inv,
+    })),
+  };
+}
+
 function publicTanks(game) {
   return game.tanks.map((t) => ({
-    id: t.id, name: t.name, color: t.color, x: t.x, y: t.y, hp: t.hp, alive: t.alive,
-    angle: t.angle, power: t.power, weapon: t.weapon, ammo: t.ammo,
-    shield: t.shield, shieldLeft: t.shieldLeft,
+    id: t.id, name: t.name, color: t.color, x: t.x, y: t.y, hp: t.hp, maxHp: t.maxHp, alive: t.alive,
+    angle: t.angle, power: t.power, maxPower: t.maxPower, weapon: t.weapon, ammo: t.ammo,
+    shield: t.shield, shieldMax: t.shieldMax, shieldLeft: t.inv.shields, fuel: t.inv.fuel,
   }));
 }
 
@@ -94,19 +99,37 @@ function randomWind() {
   return crypto.randomInt(-P.MAX_WIND, P.MAX_WIND + 1);
 }
 
-// ---------- game flow ----------
-function startGame(room) {
+function playerById(room, id) {
+  return room.players.find((p) => p.id === id);
+}
+
+// ---------- match / round flow ----------
+function startMatch(room) {
+  for (const p of room.players) {
+    p.inv = P.newInventory();
+    p.money = 0;
+    p.score = 0;
+  }
+  room.round = 0;
+  startRound(room);
+}
+
+function startRound(room) {
+  clearTimeout(room.shopTimer);
+  room.round++;
   const seed = crypto.randomInt(1, 2 ** 31);
   const terrain = P.generateTerrain(seed);
   const xs = P.placeTanks(terrain, room.players.length, seed);
   const tanks = room.players.map((p, i) => {
-    const ammo = {};
-    for (const k of P.WEAPON_ORDER) ammo[k] = P.WEAPONS[k].ammo;
+    p.ready = false;
+    p.stats = { damage: 0, kills: 0 };
     const x = xs[i];
+    const hp = P.maxHp(p.inv);
     return {
-      id: p.id, name: p.name, color: p.color, x, y: terrain[x], hp: 100, alive: true,
-      angle: x < P.W / 2 ? 45 : 135, power: 60, weapon: 'shell', ammo,
-      shield: 0, shieldLeft: 1,
+      id: p.id, name: p.name, color: p.color, x, y: terrain[x], hp, maxHp: hp, alive: true,
+      angle: x < P.W / 2 ? 45 : 135, power: 60, maxPower: P.maxPower(p.inv), weapon: 'shell',
+      inv: p.inv, ammo: p.inv.ammo, // shared with the player: what is left carries over to the next round
+      shield: 0, shieldMax: P.shieldHp(p.inv), fallFactor: P.fallFactor(p.inv),
     };
   });
   room.state = 'playing';
@@ -119,7 +142,7 @@ function nextTurn(room) {
   const g = room.game;
   clearTimeout(g.timer);
   const alive = g.tanks.filter((t) => t.alive);
-  if (alive.length <= 1) return endGame(room, alive[0] || null);
+  if (alive.length <= 1) return endRound(room, alive[0] || null);
 
   do g.turnIdx = (g.turnIdx + 1) % g.tanks.length;
   while (!g.tanks[g.turnIdx].alive);
@@ -133,62 +156,128 @@ function nextTurn(room) {
     currentId: g.currentId,
     wind: g.wind,
     timeLeft: P.TURN_SECONDS * 1000,
+    round: room.round,
+    rounds: room.rounds,
     terrain: g.terrain,
     tanks: publicTanks(g),
   });
 }
 
-function endGame(room, winner) {
+function endRound(room, winner) {
   const g = room.game;
   clearTimeout(g.timer);
-  room.state = 'over';
-  if (winner) {
-    const p = room.players.find((pl) => pl.id === winner.id);
-    if (p) p.wins++;
+  const R = P.REWARDS;
+  const earnings = {};
+  for (const p of room.players) {
+    const e = {
+      damage: p.stats.damage * R.perDamage,
+      kills: p.stats.kills * R.kill,
+      win: winner && winner.id === p.id ? R.win : 0,
+      base: R.base,
+    };
+    e.total = e.damage + e.kills + e.win + e.base;
+    p.money += e.total;
+    p.score += e.total;
+    earnings[p.id] = e;
+  }
+  const final = room.round >= room.rounds || room.players.length < 2;
+  if (final) room.state = 'over';
+  else openShop(room);
+  broadcast(room, roomInfo(room));
+  broadcast(room, {
+    type: 'roundOver',
+    round: room.round,
+    rounds: room.rounds,
+    final,
+    winnerId: winner ? winner.id : null,
+    winnerName: winner ? winner.name : null,
+    earnings,
+  });
+}
+
+function openShop(room) {
+  room.state = 'shop';
+  room.shopDeadline = Date.now() + P.SHOP_SECONDS * 1000;
+  for (const p of room.players) p.ready = false;
+  clearTimeout(room.shopTimer);
+  room.shopTimer = setTimeout(() => startRound(room), P.SHOP_SECONDS * 1000);
+}
+
+function buy(room, player, msg) {
+  if (msg.upgrade) {
+    const u = P.UPGRADES[msg.upgrade];
+    if (!u) return;
+    const level = player.inv.upgrades[msg.upgrade];
+    const price = u.prices[level];
+    if (price === undefined || player.money < price) return;
+    player.money -= price;
+    player.inv.upgrades[msg.upgrade]++;
+  } else {
+    const item = P.SHOP_ITEMS[msg.item];
+    if (!item || player.money < item.price) return;
+    player.money -= item.price;
+    if (msg.item === 'shield') player.inv.shields += item.qty;
+    else if (msg.item === 'fuel') player.inv.fuel += item.qty;
+    else player.inv.ammo[msg.item] += item.qty;
   }
   broadcast(room, roomInfo(room));
-  broadcast(room, { type: 'gameOver', winnerId: winner ? winner.id : null, winnerName: winner ? winner.name : null });
+}
+
+// Explosion damage hits the shield first. Returns what was actually taken off
+// (no overkill), so points are only paid for real damage.
+function damage(tank, dmg) {
+  const absorbed = Math.min(tank.shield, dmg);
+  const taken = Math.min(tank.hp, dmg - absorbed);
+  tank.shield -= absorbed;
+  tank.hp -= taken;
+  return { dmg: taken, absorbed };
 }
 
 function fire(room, tank) {
   const g = room.game;
-  const weapon = P.WEAPONS[tank.weapon];
-  if (weapon.ammo !== -1) {
-    if (tank.ammo[tank.weapon] <= 0) return;
-    tank.ammo[tank.weapon]--;
-  }
+  if (tank.ammo[tank.weapon] === 0) return;
+  if (tank.ammo[tank.weapon] > 0) tank.ammo[tank.weapon]--;
   clearTimeout(g.timer);
   g.phase = 'anim';
 
-  const snapshot = g.terrain.slice();
-  const angles = (weapon.spread || [0]).map((d) => tank.angle + d);
-  const shells = angles.map((ang) => {
-    const sim = P.simulateShot(snapshot, g.tanks, tank.id, P.barrelTip(tank, ang), ang, tank.power, g.wind, weapon);
-    const explosion = sim.impact
-      ? { x: sim.impact.x, y: sim.impact.y, r: weapon.radius, dirt: !!weapon.dirt, tick: sim.path.length - 1 }
-      : null;
-    return { path: sim.path, explosion };
-  });
+  const shooter = playerById(room, tank.id);
+  const credit = (victim, amount) => {
+    if (shooter && victim.id !== tank.id) shooter.stats.damage += amount;
+  };
+  const aliveBefore = new Set(g.tanks.filter((t) => t.alive).map((t) => t.id));
 
+  const shells = P.fireShells(g.terrain.slice(), g.tanks, tank, tank.weapon, g.wind);
   const hits = [];
   for (const s of shells.filter((s) => s.explosion).sort((a, b) => a.explosion.tick - b.explosion.tick)) {
     for (const t of g.tanks) {
       if (!t.alive) continue;
-      const dmg = P.explosionDamage(t, s.explosion, weapon);
-      if (dmg > 0) hits.push({ id: t.id, ...damage(t, dmg) });
+      const dmg = P.explosionDamage(t, s.explosion, P.WEAPONS[s.w]);
+      if (dmg <= 0) continue;
+      const res = damage(t, dmg);
+      credit(t, res.dmg + res.absorbed);
+      hits.push({ id: t.id, ...res });
     }
     P.applyCrater(g.terrain, s.explosion);
   }
   const fall = P.settleTanks(g.terrain, g.tanks);
-  for (const [id, dmg] of Object.entries(fall)) {
+  for (const [id, raw] of Object.entries(fall)) {
     const t = g.tanks.find((tt) => tt.id === id);
-    t.hp = Math.max(0, t.hp - dmg); // the shield does not soften a fall
+    // the shield does not soften a fall, shock absorbers do
+    const dmg = Math.min(t.hp, Math.round(raw * t.fallFactor));
+    if (dmg <= 0) continue;
+    t.hp -= dmg;
+    credit(t, dmg);
     hits.push({ id, dmg, absorbed: 0, fall: true });
   }
-  for (const t of g.tanks) if (t.alive && t.hp <= 0) t.alive = false;
+  for (const t of g.tanks) {
+    if (t.alive && t.hp <= 0) {
+      t.alive = false;
+      if (shooter && aliveBefore.has(t.id) && t.id !== tank.id) shooter.stats.kills++;
+    }
+  }
 
-  const longest = Math.max(...shells.map((s) => s.path.length));
-  const animMs = (longest / P.ANIM_SPEED) * (1000 / 60) + 1600;
+  const end = Math.max(...shells.map((s) => s.startTick + s.path.length));
+  const animMs = (end / P.ANIM_SPEED) * (1000 / 60) + 1600;
   broadcast(room, {
     type: 'shot',
     shooterId: tank.id,
@@ -203,24 +292,31 @@ function fire(room, tank) {
   g.timer = setTimeout(() => nextTurn(room), animMs);
 }
 
-// Explosion damage hits the shield first.
-function damage(tank, dmg) {
-  const absorbed = Math.min(tank.shield, dmg);
-  tank.shield -= absorbed;
-  tank.hp = Math.max(0, tank.hp - (dmg - absorbed));
-  return { dmg: dmg - absorbed, absorbed };
-}
-
 // Raising the shield uses up the turn.
 function raiseShield(room, tank) {
   const g = room.game;
-  if (tank.shieldLeft <= 0) return;
-  tank.shieldLeft--;
-  tank.shield = P.SHIELD_HP;
+  if (tank.inv.shields <= 0) return;
+  tank.inv.shields--;
+  tank.shield = tank.shieldMax;
   clearTimeout(g.timer);
   g.phase = 'anim';
   broadcast(room, { type: 'shield', id: tank.id, tanks: publicTanks(g) });
   g.timer = setTimeout(() => nextTurn(room), 1500);
+}
+
+// Driving costs 1 fuel per pixel; tanks cannot climb walls or drive off cliffs.
+const MOVE_STEP = 2;
+function move(room, tank, dir) {
+  const g = room.game;
+  if (tank.inv.fuel < MOVE_STEP) return;
+  const nx = Math.max(15, Math.min(P.W - 15, tank.x + Math.sign(dir) * MOVE_STEP));
+  if (nx === tank.x) return;
+  const ny = g.terrain[nx];
+  if (tank.y - ny > 2.5 * MOVE_STEP || ny - tank.y > 4 * MOVE_STEP) return;
+  tank.x = nx;
+  tank.y = ny;
+  tank.inv.fuel -= MOVE_STEP;
+  broadcast(room, { type: 'move', id: tank.id, x: tank.x, y: tank.y, fuel: tank.inv.fuel });
 }
 
 function leaveRoom(player) {
@@ -230,6 +326,7 @@ function leaveRoom(player) {
   room.players = room.players.filter((p) => p !== player);
   if (room.players.length === 0) {
     if (room.game) clearTimeout(room.game.timer);
+    clearTimeout(room.shopTimer);
     rooms.delete(room.code);
     return;
   }
@@ -241,12 +338,22 @@ function leaveRoom(player) {
       t.hp = 0;
     }
   }
+  if (room.state === 'shop' && room.players.length < 2) {
+    clearTimeout(room.shopTimer);
+    room.state = 'over';
+    broadcast(room, roomInfo(room));
+    broadcast(room, { type: 'roundOver', round: room.round, rounds: room.rounds, final: true, winnerId: null, earnings: {} });
+    return;
+  }
   broadcast(room, roomInfo(room));
+  if (room.state === 'shop' && room.players.every((p) => p.ready)) return startRound(room);
   if (room.state === 'playing') {
     const g = room.game;
     const alive = g.tanks.filter((t) => t.alive);
-    if (alive.length <= 1) endGame(room, alive[0] || null);
-    else if (g.currentId === player.id && g.phase === 'aim') nextTurn(room);
+    if (alive.length <= 1) {
+      if (g.phase === 'aim') endRound(room, alive[0] || null);
+      // during a shot animation the scheduled nextTurn ends the round
+    } else if (g.currentId === player.id && g.phase === 'aim') nextTurn(room);
     else broadcast(room, { type: 'tanks', tanks: publicTanks(g) });
   }
 }
@@ -255,9 +362,15 @@ function leaveRoom(player) {
 const wss = new WebSocketServer({ server, maxPayload: 4096 });
 
 wss.on('connection', (ws) => {
-  const player = { id: crypto.randomUUID(), ws, name: 'Panzer', color: null, wins: 0, room: null };
+  const player = {
+    id: crypto.randomUUID(), ws, name: 'Panzer', color: null, room: null,
+    inv: P.newInventory(), money: 0, score: 0, ready: false, stats: { damage: 0, kills: 0 }, lastMove: 0,
+  };
   ws.isAlive = true;
   ws.on('pong', () => (ws.isAlive = true));
+
+  const myTurn = (room) =>
+    room && room.state === 'playing' && room.game.currentId === player.id && room.game.phase === 'aim';
 
   ws.on('message', (raw) => {
     let msg;
@@ -271,7 +384,7 @@ wss.on('connection', (ws) => {
     switch (msg.type) {
       case 'create': {
         if (room) leaveRoom(player);
-        const r = { code: newCode(), players: [], hostId: player.id, state: 'lobby', game: null };
+        const r = { code: newCode(), players: [], hostId: player.id, state: 'lobby', rounds: 5, round: 0, game: null };
         rooms.set(r.code, r);
         player.name = cleanName(msg.name);
         player.color = freeColor(r);
@@ -284,50 +397,72 @@ wss.on('connection', (ws) => {
       case 'join': {
         const r = rooms.get(String(msg.code || '').toUpperCase().trim());
         if (!r) return send(ws, { type: 'error', msg: 'Raum nicht gefunden.' });
-        if (r.state === 'playing') return send(ws, { type: 'error', msg: 'In diesem Raum läuft gerade ein Spiel.' });
+        if (r.state === 'playing' || r.state === 'shop')
+          return send(ws, { type: 'error', msg: 'In diesem Raum läuft gerade ein Match.' });
         if (r.players.length >= P.MAX_PLAYERS) return send(ws, { type: 'error', msg: 'Der Raum ist voll.' });
         if (room) leaveRoom(player);
         player.name = cleanName(msg.name);
         player.color = freeColor(r);
         player.room = r;
+        player.money = 0;
+        player.score = 0;
         r.players.push(player);
         send(ws, { type: 'joined', you: player.id, code: r.code });
         broadcast(r, roomInfo(r));
         break;
       }
+      case 'settings': {
+        if (!room || room.hostId !== player.id || (room.state !== 'lobby' && room.state !== 'over')) return;
+        if (P.ROUND_OPTIONS.includes(Number(msg.rounds))) room.rounds = Number(msg.rounds);
+        broadcast(room, roomInfo(room));
+        break;
+      }
       case 'start': {
-        if (!room || room.hostId !== player.id || room.state === 'playing') return;
+        if (!room || room.hostId !== player.id || (room.state !== 'lobby' && room.state !== 'over')) return;
         if (room.players.length < 2) return send(ws, { type: 'error', msg: 'Mindestens 2 Spieler nötig.' });
-        startGame(room);
+        startMatch(room);
+        break;
+      }
+      case 'lobby': {
+        if (!room || room.hostId !== player.id || room.state !== 'over') return;
+        room.state = 'lobby';
+        broadcast(room, roomInfo(room));
         break;
       }
       case 'aim': {
-        if (!room || room.state !== 'playing') return;
-        const g = room.game;
-        if (g.currentId !== player.id || g.phase !== 'aim') return;
-        const t = g.tanks[g.turnIdx];
+        if (!myTurn(room)) return;
+        const t = room.game.tanks[room.game.turnIdx];
         const angle = Number(msg.angle);
         const power = Number(msg.power);
         if (Number.isFinite(angle)) t.angle = Math.max(0, Math.min(180, Math.round(angle)));
-        if (Number.isFinite(power)) t.power = Math.max(10, Math.min(100, Math.round(power)));
-        if (P.WEAPONS[msg.weapon] && (t.ammo[msg.weapon] !== 0)) t.weapon = msg.weapon;
+        if (Number.isFinite(power)) t.power = Math.max(10, Math.min(t.maxPower, Math.round(power)));
+        if (P.WEAPON_ORDER.includes(msg.weapon) && t.ammo[msg.weapon] !== 0) t.weapon = msg.weapon;
         broadcast(room, { type: 'aim', id: t.id, angle: t.angle, power: t.power, weapon: t.weapon });
         break;
       }
-      case 'fire': {
-        if (!room || room.state !== 'playing') return;
-        const g = room.game;
-        if (g.currentId !== player.id || g.phase !== 'aim') return;
-        fire(room, g.tanks[g.turnIdx]);
+      case 'fire':
+        if (myTurn(room)) fire(room, room.game.tanks[room.game.turnIdx]);
+        break;
+      case 'shield':
+        if (myTurn(room)) raiseShield(room, room.game.tanks[room.game.turnIdx]);
+        break;
+      case 'move': {
+        if (!myTurn(room)) return;
+        const now = Date.now();
+        if (now - player.lastMove < 25) return;
+        player.lastMove = now;
+        move(room, room.game.tanks[room.game.turnIdx], Number(msg.dir) || 0);
         break;
       }
-      case 'shield': {
-        if (!room || room.state !== 'playing') return;
-        const g = room.game;
-        if (g.currentId !== player.id || g.phase !== 'aim') return;
-        raiseShield(room, g.tanks[g.turnIdx]);
+      case 'buy':
+        if (room && room.state === 'shop') buy(room, player, msg);
         break;
-      }
+      case 'ready':
+        if (!room || room.state !== 'shop') return;
+        player.ready = !!msg.ready;
+        if (room.players.every((p) => p.ready)) startRound(room);
+        else broadcast(room, roomInfo(room));
+        break;
       case 'leave':
         leaveRoom(player);
         send(ws, { type: 'left' });

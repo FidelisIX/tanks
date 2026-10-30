@@ -23,10 +23,16 @@
   const SUBSTEPS = 4;
   const ANIM_SPEED = 2; // simulation ticks rendered per frame
   const TURN_SECONDS = 40;
+  const SHOP_SECONDS = 30;
+  const ROUND_OPTIONS = [3, 5, 10];
+  const BASE_HP = 100;
+  const BASE_MAX_POWER = 100;
+  const START_FUEL = 100;
+  const DRILL_SPEED = 2;
   const MAX_PLAYERS = 4;
   const COLORS = ['#e8553b', '#3ba7e8', '#f2c230', '#9b5de5'];
 
-  // ammo -1 = unlimited
+  // ammo: amount at the start of a match (-1 = unlimited)
   // drag: relative air resistance (heavy shells are pushed around less by wind)
   const WEAPONS = {
     shell: { name: 'Granate', radius: 28, damage: 35, ammo: -1, drag: 1 },
@@ -34,8 +40,49 @@
     triple: { name: 'Dreierfächer', radius: 22, damage: 24, ammo: 3, drag: 1.3, spread: [-5, 0, 5] },
     dirt: { name: 'Erdklumpen', radius: 45, damage: 0, ammo: 2, drag: 1.5, dirt: true },
     ball: { name: 'Ball', radius: 30, damage: 40, ammo: 3, drag: 1.1, roll: true },
+    drill: { name: 'Bohrer', radius: 32, damage: 45, ammo: 0, drag: 0.8, drill: 90 },
+    cluster: { name: 'Splitterbombe', radius: 20, damage: 20, ammo: 0, drag: 1, cluster: { count: 5, spread: 1.1 } },
+    bomblet: { name: 'Splitter', radius: 18, damage: 18, ammo: 0, drag: 1.3 }, // spawned by cluster only
   };
-  const WEAPON_ORDER = ['shell', 'heavy', 'triple', 'dirt', 'ball'];
+  const WEAPON_ORDER = ['shell', 'heavy', 'triple', 'dirt', 'ball', 'drill', 'cluster'];
+
+  // Shop between rounds. Items add to the inventory, upgrades are permanent for the match.
+  const SHOP_ITEMS = {
+    heavy: { name: 'Schwere Bombe', price: 40, qty: 1 },
+    triple: { name: 'Dreierfächer', price: 35, qty: 1 },
+    dirt: { name: 'Erdklumpen', price: 25, qty: 1 },
+    ball: { name: 'Ball', price: 35, qty: 1 },
+    drill: { name: 'Bohrer', price: 50, qty: 1, desc: 'gräbt sich nach dem Aufprall durch die Erde' },
+    cluster: { name: 'Splitterbombe', price: 60, qty: 1, desc: 'zerfällt am höchsten Punkt in 5 Splitter' },
+    shield: { name: 'Schild', price: 60, qty: 1, desc: 'Energieblase, kostet beim Einsatz den Zug' },
+    fuel: { name: 'Treibstoff', price: 20, qty: 60, desc: 'zum Fahren (A/D)' },
+  };
+  const UPGRADES = {
+    armor: { name: 'Panzerung', desc: '+15 max. Lebenspunkte', prices: [80, 120, 160] },
+    shieldBoost: { name: 'Schildverstärker', desc: '+30 Schildpunkte', prices: [70, 110] },
+    shock: { name: 'Stoßdämpfer', desc: '−50 % Fallschaden', prices: [60, 90] },
+    cannon: { name: 'Turbo-Kanone', desc: '+10 max. Kraft', prices: [70, 110] },
+  };
+  const REWARDS = { perDamage: 1, kill: 50, win: 75, base: 30 };
+
+  function newInventory() {
+    const ammo = {};
+    for (const k of WEAPON_ORDER) ammo[k] = WEAPONS[k].ammo;
+    return { ammo, shields: 1, fuel: START_FUEL, upgrades: { armor: 0, shieldBoost: 0, shock: 0, cannon: 0 } };
+  }
+
+  function maxHp(inv) {
+    return BASE_HP + 15 * inv.upgrades.armor;
+  }
+  function maxPower(inv) {
+    return BASE_MAX_POWER + 10 * inv.upgrades.cannon;
+  }
+  function shieldHp(inv) {
+    return SHIELD_HP + 30 * inv.upgrades.shieldBoost;
+  }
+  function fallFactor(inv) {
+    return Math.max(0, 1 - 0.5 * inv.upgrades.shock);
+  }
 
   function mulberry32(seed) {
     return function () {
@@ -146,17 +193,15 @@
     return false;
   }
 
-  // Returns { path: [[x,y],...] one point per tick, impact: {x,y} | null }
-  function simulateShot(terrain, tanks, shooterId, start, angleDeg, power, wind, weapon) {
-    const a = (angleDeg * Math.PI) / 180;
+  // Flies one projectile from (x, y) with velocity (vx, vy).
+  // Returns { path: [[x,y],...] one point per tick, impact: {x,y} | null, split?: {x,y,vx,vy} }
+  function simulate(terrain, tanks, shooterId, x, y, vx, vy, wind, weapon, t0 = 0) {
     const drag = DRAG * (weapon.drag || 1);
-    let x = start.x;
-    let y = start.y;
-    let vx = Math.cos(a) * power * POWER_SCALE;
-    let vy = -Math.sin(a) * power * POWER_SCALE;
-    let rolling = false;
+    let mode = 'fly'; // 'fly' | 'roll' | 'drill'
     let rollTicks = 0;
     let slowTicks = 0;
+    let drilled = 0;
+    let dir = null;
     const dt = 1 / SUBSTEPS;
     const path = [[round1(x), round1(y)]];
     const impact = () => {
@@ -164,9 +209,10 @@
       return { path, impact: { x: round1(x), y: round1(y) } };
     };
 
-    for (let t = 1; t <= MAX_TICKS; t++) {
+    for (let t = t0 + 1; t <= MAX_TICKS; t++) {
+      const vyBefore = vy;
       for (let s = 0; s < SUBSTEPS; s++) {
-        if (!rolling) {
+        if (mode === 'fly') {
           // gravity + quadratic drag relative to the moving air
           const rvx = vx - windAt(wind, y);
           const rv = Math.hypot(rvx, vy);
@@ -180,14 +226,27 @@
           }
           if (hitsTank(tanks, shooterId, x, y, t)) return impact();
           if (x >= 0 && x < W && y >= terrain[Math.floor(x)]) {
-            if (!weapon.roll) return impact();
-            // touch down: keep the velocity component along the slope
-            const sl = slopeAt(terrain, x);
-            vx = ((vx + vy * sl) / (1 + sl * sl)) * 0.8;
-            vy = 0;
-            y = terrain[Math.floor(x)] - BALL_RADIUS;
-            rolling = true;
+            if (weapon.roll) {
+              // touch down: keep the velocity component along the slope
+              const sl = slopeAt(terrain, x);
+              vx = ((vx + vy * sl) / (1 + sl * sl)) * 0.8;
+              vy = 0;
+              y = terrain[Math.floor(x)] - BALL_RADIUS;
+              mode = 'roll';
+            } else if (weapon.drill) {
+              const v = Math.hypot(vx, vy) || 1;
+              dir = { x: vx / v, y: vy / v };
+              mode = 'drill';
+            } else return impact();
           }
+        } else if (mode === 'drill') {
+          x += dir.x * DRILL_SPEED * dt;
+          y += dir.y * DRILL_SPEED * dt;
+          drilled += DRILL_SPEED * dt;
+          if (x < 0 || x >= W || y >= H - 2) return impact();
+          if (hitsTank(tanks, shooterId, x, y, t)) return impact();
+          // explode when the drill comes out into the open air or has dug far enough
+          if (y < terrain[Math.floor(x)] - 3 || drilled >= weapon.drill) return impact();
         } else {
           const sl = slopeAt(terrain, x);
           vx += ((GRAVITY * sl) / (1 + sl * sl)) * dt;
@@ -206,7 +265,7 @@
             vx *= -0.4; // too steep: bounce off the wall
           } else if (next - ground > limit) {
             x = nx; // edge of a cliff: fly again
-            rolling = false;
+            mode = 'fly';
           } else {
             x = nx;
             y = next - BALL_RADIUS;
@@ -214,14 +273,55 @@
           if (hitsTank(tanks, shooterId, x, y, MAX_TICKS)) return impact();
         }
       }
-      if (rolling) {
+      if (mode === 'roll') {
         rollTicks++;
         slowTicks = Math.abs(vx) < 0.08 ? slowTicks + 1 : 0;
         if (slowTicks > 15 || rollTicks > MAX_ROLL_TICKS) return impact();
       }
       path.push([round1(x), round1(y)]);
+      if (weapon.cluster && mode === 'fly' && t - t0 > 5 && vyBefore < 0 && vy >= 0) {
+        return { path, impact: null, split: { x, y, vx, vy } };
+      }
     }
     return { path, impact: null };
+  }
+
+  function simulateShot(terrain, tanks, shooterId, start, angleDeg, power, wind, weapon) {
+    const a = (angleDeg * Math.PI) / 180;
+    const v = power * POWER_SCALE;
+    return simulate(terrain, tanks, shooterId, start.x, start.y, Math.cos(a) * v, -Math.sin(a) * v, wind, weapon);
+  }
+
+  // All projectiles of one shot. Each shell: { w, startTick, path, explosion | null }
+  // where explosion.tick is the absolute tick of the impact.
+  function fireShells(terrain, tanks, shooter, weaponKey, wind) {
+    const weapon = WEAPONS[weaponKey];
+    const shells = [];
+    const add = (w, startTick, sim) => {
+      shells.push({
+        w,
+        startTick,
+        path: sim.path,
+        explosion: sim.impact
+          ? { x: sim.impact.x, y: sim.impact.y, r: WEAPONS[w].radius, dirt: !!WEAPONS[w].dirt, tick: startTick + sim.path.length - 1 }
+          : null,
+      });
+    };
+    for (const d of weapon.spread || [0]) {
+      const ang = shooter.angle + d;
+      const sim = simulateShot(terrain, tanks, shooter.id, barrelTip(shooter, ang), ang, shooter.power, wind, weapon);
+      add(weaponKey, 0, sim);
+      if (sim.split) {
+        const { count, spread } = weapon.cluster;
+        const t0 = sim.path.length - 1;
+        for (let i = 0; i < count; i++) {
+          const dvx = (i - (count - 1) / 2) * spread;
+          const sub = simulate(terrain, tanks, shooter.id, sim.split.x, sim.split.y, sim.split.vx + dvx, sim.split.vy, wind, WEAPONS.bomblet, t0);
+          add('bomblet', t0, sub);
+        }
+      }
+    }
+    return shells;
   }
 
   function explosionDamage(tank, ex, weapon) {
@@ -257,8 +357,9 @@
 
   return {
     W, H, GRAVITY, MAX_WIND, SHIELD_RADIUS, SHIELD_HP, TANK_RADIUS, BARREL, TURRET_Y, ANIM_SPEED, TURN_SECONDS,
-    MAX_PLAYERS, COLORS, WEAPONS, WEAPON_ORDER,
-    generateTerrain, placeTanks, carve, addDirt, applyCrater, barrelTip, simulateShot,
+    SHOP_SECONDS, ROUND_OPTIONS, MAX_PLAYERS, COLORS, WEAPONS, WEAPON_ORDER, SHOP_ITEMS, UPGRADES, REWARDS,
+    newInventory, maxHp, maxPower, shieldHp, fallFactor,
+    generateTerrain, placeTanks, carve, addDirt, applyCrater, barrelTip, simulateShot, fireShells,
     explosionDamage, settleTanks,
   };
 });

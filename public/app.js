@@ -18,6 +18,10 @@
   let floaters = [];
   let lastAimSent = 0;
   let aimTimer = null;
+  let lastRound = null; // last roundOver message
+  let overlayVisible = false;
+  let shopDeadline = 0;
+  let driveTimer = null;
 
   const canvas = $('canvas');
   const ctx = canvas.getContext('2d');
@@ -51,6 +55,7 @@
         break;
       case 'room':
         room = msg;
+        if (room.state === 'shop') shopDeadline = performance.now() + room.shopTimeLeft;
         renderRoom();
         break;
       case 'left':
@@ -62,6 +67,12 @@
         if (anim) finishAnim();
         applyTurn(msg);
         break;
+      case 'move': {
+        const t = tankById(msg.id);
+        if (t) Object.assign(t, { x: msg.x, y: msg.y, fuel: msg.fuel });
+        if (msg.id === myId) $('fuel').textContent = `⛽ ${msg.fuel}`;
+        break;
+      }
       case 'aim': {
         const t = tankById(msg.id);
         if (t && msg.id !== myId) Object.assign(t, { angle: msg.angle, power: msg.power, weapon: msg.weapon });
@@ -85,8 +96,14 @@
         updateControls();
         break;
       }
-      case 'gameOver':
-        setTimeout(() => showGameOver(msg), anim ? 1800 : 300);
+      case 'roundOver':
+        lastRound = msg;
+        phase = 'idle';
+        updateControls();
+        setTimeout(() => {
+          overlayVisible = true;
+          renderOverlay();
+        }, anim ? 1800 : 600);
         break;
     }
   }
@@ -103,54 +120,105 @@
 
   function renderRoom() {
     if (!room) return;
-    if (room.state === 'lobby') show('room');
+    const isHost = room.hostId === myId;
+    if (room.state === 'lobby') {
+      overlayVisible = false;
+      show('room');
+    }
     if (room.state === 'playing') {
+      overlayVisible = false;
       show('game');
-      $('overlay').classList.add('hidden');
     }
     $('room-code').textContent = room.code;
-    const isHost = room.hostId === myId;
     $('player-list').innerHTML = room.players
       .map(
         (p) => `<li><span class="dot" style="background:${p.color}"></span>${esc(p.name)}${
           p.id === myId ? ' (du)' : ''
-        }<span class="badge">${p.id === room.hostId ? 'Gastgeber · ' : ''}${p.wins} Siege</span></li>`
+        }<span class="badge">${p.id === room.hostId ? 'Gastgeber' : ''}</span></li>`
       )
       .join('');
+    $('rounds').value = String(room.rounds);
+    $('rounds').disabled = !isHost;
     $('btn-start').classList.toggle('hidden', !isHost);
     $('btn-start').disabled = room.players.length < 2;
     $('room-hint').textContent = isHost
       ? room.players.length < 2
         ? 'Teile den Code oder Link mit deinen Freunden (2–4 Spieler).'
         : ''
-      : 'Warte, bis der Gastgeber das Spiel startet …';
-    renderScores();
+      : 'Warte, bis der Gastgeber das Match startet …';
+    renderOverlay();
   }
 
-  function renderScores() {
-    if (!room) return;
-    $('score-list').innerHTML = [...room.players]
-      .sort((a, b) => b.wins - a.wins)
-      .map((p) => `<li><span class="dot" style="background:${p.color}"></span>${esc(p.name)}<span class="badge">${p.wins} Siege</span></li>`)
-      .join('');
+  function me() {
+    return room && room.players.find((p) => p.id === myId);
+  }
+
+  // Round summary + shop (between rounds) or final standings (after the last round).
+  function renderOverlay() {
+    const show = overlayVisible && room && (room.state === 'shop' || room.state === 'over') && lastRound;
+    $('overlay').classList.toggle('hidden', !show);
+    if (!show) return;
     const isHost = room.hostId === myId;
-    $('btn-again').classList.toggle('hidden', !isHost);
-    $('btn-again').disabled = room.players.length < 2;
-    $('overlay-hint').textContent = isHost
-      ? room.players.length < 2
-        ? 'Zu wenige Spieler für eine neue Runde.'
-        : ''
-      : 'Der Gastgeber kann eine neue Runde starten.';
-  }
+    const players = room.players;
+    const name = (id) => {
+      const p = players.find((pp) => pp.id === id);
+      return p ? `<span style="color:${p.color}">${esc(p.name)}</span>` : '';
+    };
+    let html = '';
 
-  function showGameOver(msg) {
-    if (!room || room.state !== 'over') return;
-    $('overlay-title').textContent =
-      msg.winnerId === myId ? 'Du hast gewonnen! 🏆' : msg.winnerName ? `${msg.winnerName} gewinnt!` : 'Unentschieden!';
-    renderScores();
-    $('overlay').classList.remove('hidden');
-    phase = 'idle';
-    updateControls();
+    if (room.state === 'over') {
+      const ranking = [...players].sort((a, b) => b.score - a.score);
+      const top = ranking[0];
+      const tie = ranking.length > 1 && ranking[1].score === top.score;
+      html += `<h2>${tie ? 'Unentschieden!' : top && top.id === myId ? 'Du gewinnst das Match! 🏆' : top ? `${name(top.id)} gewinnt das Match!` : 'Match vorbei'}</h2>`;
+    } else {
+      html += `<p class="hint">Runde ${lastRound.round} von ${lastRound.rounds}</p>`;
+      html += `<h2>${lastRound.winnerId === myId ? 'Du hast die Runde gewonnen!' : lastRound.winnerId ? `${name(lastRound.winnerId)} gewinnt die Runde` : 'Niemand hat überlebt'}</h2>`;
+    }
+
+    // earnings of the round that just ended
+    const rows = players
+      .filter((p) => lastRound.earnings[p.id])
+      .map((p) => {
+        const e = lastRound.earnings[p.id];
+        return `<tr><td>${name(p.id)}</td><td>${e.damage}</td><td>${e.kills}</td><td>${e.win}</td><td>${e.base}</td><td><b>+${e.total}</b></td><td>${p.score}</td></tr>`;
+      })
+      .join('');
+    if (rows) {
+      html += `<table class="earn"><tr><th></th><th>Schaden</th><th>Abschüsse</th><th>Sieg</th><th>Basis</th><th>Runde</th><th>Gesamt</th></tr>${rows}</table>`;
+    }
+
+    if (room.state === 'shop') {
+      const m = me();
+      const inv = m.inv;
+      const owned = (k) => (k === 'shield' ? inv.shields : k === 'fuel' ? inv.fuel : inv.ammo[k]);
+      html += `<div class="shop-head"><b>Shop</b><span>💰 ${m.money}</span><span id="shop-timer"></span></div><div class="shop">`;
+      for (const [k, it] of Object.entries(P.SHOP_ITEMS)) {
+        html += `<button data-buy="${k}" ${m.money < it.price || m.ready ? 'disabled' : ''} title="${esc(it.desc || '')}">
+          <span>${it.name}${it.qty > 1 ? ` +${it.qty}` : ''}</span><small>hast ${owned(k)}</small><b>${it.price} 💰</b></button>`;
+      }
+      for (const [k, u] of Object.entries(P.UPGRADES)) {
+        const lvl = inv.upgrades[k];
+        const price = u.prices[lvl];
+        html += `<button data-upgrade="${k}" class="upg" ${price === undefined || m.money < price || m.ready ? 'disabled' : ''}>
+          <span>${u.name} ${'★'.repeat(lvl)}${'☆'.repeat(u.prices.length - lvl)}</span><small>${u.desc}</small><b>${price === undefined ? 'max.' : `${price} 💰`}</b></button>`;
+      }
+      html += `</div><div class="ready-list">${players
+        .map((p) => `<span class="${p.ready ? 'ok' : ''}">${p.ready ? '✓' : '…'} ${esc(p.name)}</span>`)
+        .join('')}</div>`;
+      html += `<button data-action="ready" class="primary">${m.ready ? 'Doch noch einkaufen' : 'Fertig – nächste Runde'}</button>`;
+    } else {
+      html += `<ul class="ranking">${[...players]
+        .sort((a, b) => b.score - a.score)
+        .map((p, i) => `<li><b>${i + 1}.</b><span class="dot" style="background:${p.color}"></span>${esc(p.name)}<span class="badge">${p.score} Punkte</span></li>`)
+        .join('')}</ul>`;
+      if (isHost) {
+        html += `<button data-action="again" class="primary" ${players.length < 2 ? 'disabled' : ''}>Neues Match (${room.rounds} Runden)</button>`;
+        html += `<button data-action="lobby">Rundenzahl ändern</button>`;
+      } else html += `<p class="hint">Der Gastgeber kann ein neues Match starten.</p>`;
+    }
+    html += `<button data-action="menu" class="link">Zum Hauptmenü</button>`;
+    $('overlay-card').innerHTML = html;
   }
 
   function esc(s) {
@@ -169,7 +237,9 @@
     wind = msg.wind;
     deadline = performance.now() + msg.timeLeft;
     phase = 'aim';
+    overlayVisible = false;
     $('overlay').classList.add('hidden');
+    $('round-label').textContent = `Runde ${msg.round}/${msg.rounds}`;
     show('game');
     updateControls();
   }
@@ -185,8 +255,10 @@
   function updateControls() {
     const t = myTank();
     const mine = isMyTurn();
-    for (const id of ['angle', 'power', 'btn-fire']) $(id).disabled = !mine;
+    for (const id of ['angle', 'power', 'btn-fire', 'btn-left', 'btn-right']) $(id).disabled = !mine;
     if (t) {
+      $('power').max = t.maxPower;
+      $('fuel').textContent = `⛽ ${t.fuel}`;
       $('angle').value = t.angle;
       $('power').value = t.power;
       $('angle-val').textContent = t.angle;
@@ -195,6 +267,7 @@
     $('weapons').innerHTML = P.WEAPON_ORDER.map((k, i) => {
       const w = P.WEAPONS[k];
       const ammo = t ? t.ammo[k] : w.ammo;
+      if (ammo === 0 && (k === 'drill' || k === 'cluster')) return ''; // shop-only weapons appear once bought
       const label = ammo === -1 ? '∞' : `×${ammo}`;
       return `<button data-w="${k}" class="${t && t.weapon === k ? 'active' : ''}" ${
         !mine || ammo === 0 ? 'disabled' : ''
@@ -216,7 +289,7 @@
     const t = myTank();
     if (!isMyTurn()) return;
     if (changes.angle !== undefined) t.angle = Math.max(0, Math.min(180, Math.round(changes.angle)));
-    if (changes.power !== undefined) t.power = Math.max(10, Math.min(100, Math.round(changes.power)));
+    if (changes.power !== undefined) t.power = Math.max(10, Math.min(t.maxPower, Math.round(changes.power)));
     if (changes.weapon !== undefined && t.ammo[changes.weapon] !== 0) t.weapon = changes.weapon;
     $('angle').value = t.angle;
     $('power').value = t.power;
@@ -244,6 +317,10 @@
     updateControls();
   }
 
+  function drive(dir) {
+    if (isMyTurn()) send({ type: 'move', dir });
+  }
+
   function raiseShield() {
     if (!isMyTurn() || myTank().shieldLeft <= 0) return;
     send({ type: 'shield' });
@@ -256,7 +333,7 @@
     phase = 'anim';
     const shooter = tankById(msg.shooterId);
     if (shooter) Object.assign(shooter, { angle: msg.angle, power: msg.power, weapon: msg.weapon });
-    anim = { msg, tick: 0, applied: msg.shells.map(() => false), endTick: Math.max(...msg.shells.map((s) => s.path.length)) + 40 };
+    anim = { msg, tick: 0, applied: msg.shells.map(() => false), endTick: Math.max(...msg.shells.map((s) => s.startTick + s.path.length)) + 40 };
     sound('fire');
     updateControls();
   }
@@ -284,10 +361,12 @@
     tanks = msg.tanks;
     for (const t of tanks) {
       const old = before.get(t.id) || t;
-      const lost = old.hp - t.hp;
+      const fell = msg.hits.filter((h) => h.id === t.id && h.fall).reduce((a, h) => a + h.dmg, 0);
+      const lost = old.hp - t.hp - fell;
       const blocked = (old.shield || 0) - (t.shield || 0);
       if (blocked > 0) floaters.push({ x: t.x + 22, y: t.y - 58, text: `🛡 -${blocked}`, age: 0, color: '#7fd8ff' });
       if (lost > 0) floaters.push({ x: t.x, y: t.y - 40, text: `-${lost}`, age: 0, color: '#ff6b5a' });
+      if (fell > 0) floaters.push({ x: t.x - 24, y: t.y - 20, text: `Sturz -${fell}`, age: 0, color: '#ffb347' });
       if (lost > 0 && !t.alive) floaters.push({ x: t.x, y: t.y - 60, text: 'zerstört!', age: 0, color: '#fff' });
     }
     anim = null;
@@ -371,6 +450,8 @@
       $('timer-label').textContent = `⏱ ${s}s`;
       $('timer-label').style.color = s <= 10 ? '#e8553b' : '';
     } else $('timer-label').textContent = '';
+    const st = $('shop-timer');
+    if (st) st.textContent = `⏱ ${Math.max(0, Math.ceil((shopDeadline - now) / 1000))}s`;
 
     requestAnimationFrame(draw);
   }
@@ -434,20 +515,20 @@
     ctx.fillText(t.name, t.x, t.y - 40);
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(t.x - 20, t.y - 34, 40, 5);
-    ctx.fillStyle = t.hp > 50 ? '#6fd36f' : t.hp > 25 ? '#f2c230' : '#e8553b';
-    ctx.fillRect(t.x - 20, t.y - 34, 40 * (t.hp / 100), 5);
+    ctx.fillStyle = t.hp > t.maxHp / 2 ? '#6fd36f' : t.hp > t.maxHp / 4 ? '#f2c230' : '#e8553b';
+    ctx.fillRect(t.x - 20, t.y - 34, 40 * (t.hp / t.maxHp), 5);
 
     if (t.shield > 0) {
       const pulse = 0.25 + 0.1 * Math.sin(now / 300);
       const g = ctx.createRadialGradient(t.x, t.y - 6, P.SHIELD_RADIUS * 0.5, t.x, t.y - 6, P.SHIELD_RADIUS);
       g.addColorStop(0, 'rgba(127,216,255,0)');
-      g.addColorStop(1, `rgba(127,216,255,${pulse + (0.4 * t.shield) / P.SHIELD_HP})`);
+      g.addColorStop(1, `rgba(127,216,255,${pulse + (0.4 * t.shield) / t.shieldMax})`);
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(t.x, t.y - 6, P.SHIELD_RADIUS, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#7fd8ff';
-      ctx.fillRect(t.x - 20, t.y - 28, 40 * (t.shield / P.SHIELD_HP), 3);
+      ctx.fillRect(t.x - 20, t.y - 28, 40 * (t.shield / t.shieldMax), 3);
     }
 
     if (t.id === currentId && phase === 'aim') {
@@ -474,8 +555,8 @@
   function drawProjectiles() {
     const tick = Math.floor(anim.tick);
     anim.msg.shells.forEach((s, i) => {
-      if (anim.applied[i]) return;
-      const end = Math.min(tick, s.path.length - 1);
+      if (anim.applied[i] || tick < s.startTick) return;
+      const end = Math.min(tick - s.startTick, s.path.length - 1);
       ctx.strokeStyle = 'rgba(255,220,150,0.35)';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -491,10 +572,10 @@
         ctx.lineTo(x, 2);
         ctx.fill();
       }
-      const isBall = anim.msg.weapon === 'ball';
+      const isBall = s.w === 'ball';
       ctx.fillStyle = s.explosion && s.explosion.dirt ? '#8a6a3c' : isBall ? '#d9dde4' : '#fff3c4';
       ctx.beginPath();
-      ctx.arc(x, y, isBall ? 5 : 4, 0, Math.PI * 2);
+      ctx.arc(x, y, isBall ? 5 : s.w === 'bomblet' ? 3 : 4, 0, Math.PI * 2);
       ctx.fill();
       if (isBall) {
         // spinning stripe
@@ -616,9 +697,28 @@
   };
   $('code').addEventListener('keydown', (e) => e.key === 'Enter' && $('btn-join').click());
   $('btn-start').onclick = () => send({ type: 'start' });
-  $('btn-again').onclick = () => send({ type: 'start' });
+  $('rounds').onchange = (e) => send({ type: 'settings', rounds: Number(e.target.value) });
+  $('overlay-card').onclick = (e) => {
+    const b = e.target.closest('button');
+    if (!b || b.disabled) return;
+    if (b.dataset.buy) send({ type: 'buy', item: b.dataset.buy });
+    else if (b.dataset.upgrade) send({ type: 'buy', upgrade: b.dataset.upgrade });
+    else if (b.dataset.action === 'ready') send({ type: 'ready', ready: !me().ready });
+    else if (b.dataset.action === 'again') send({ type: 'start' });
+    else if (b.dataset.action === 'lobby') send({ type: 'lobby' });
+    else if (b.dataset.action === 'menu') send({ type: 'leave' });
+  };
+  for (const [id, dir] of [['btn-left', -1], ['btn-right', 1]]) {
+    const btn = $(id);
+    const stop = () => clearInterval(driveTimer);
+    btn.addEventListener('pointerdown', () => {
+      stop();
+      drive(dir);
+      driveTimer = setInterval(() => drive(dir), 40);
+    });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, stop);
+  }
   $('btn-leave').onclick = () => send({ type: 'leave' });
-  $('btn-menu').onclick = () => send({ type: 'leave' });
   $('btn-copy').onclick = async () => {
     const link = `${location.origin}${location.pathname}?room=${room.code}`;
     try {
@@ -652,6 +752,10 @@
       case ' ': fire(); break;
       case 's':
       case 'S': raiseShield(); break;
+      case 'a':
+      case 'A': drive(-1); break;
+      case 'd':
+      case 'D': drive(1); break;
       default: {
         const i = Number(e.key) - 1;
         if (P.WEAPON_ORDER[i]) setAim({ weapon: P.WEAPON_ORDER[i] });

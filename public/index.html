@@ -33,7 +33,14 @@
       <div id="room-code" class="code"></div>
       <button id="btn-copy">Einladungslink kopieren</button>
       <ul id="player-list"></ul>
-      <button id="btn-start" class="primary">Spiel starten</button>
+      <label class="inline">Runden pro Match
+        <select id="rounds">
+          <option value="3">3</option>
+          <option value="5">5</option>
+          <option value="10">10</option>
+        </select>
+      </label>
+      <button id="btn-start" class="primary">Match starten</button>
       <p id="room-hint" class="hint"></p>
       <button id="btn-leave" class="link">Raum verlassen</button>
     </section>
@@ -42,19 +49,14 @@
     <section id="screen-game" class="hidden">
       <div id="topbar">
         <span id="turn-label"></span>
+        <span id="round-label"></span>
         <span id="wind-label"></span>
         <span id="timer-label"></span>
       </div>
       <div id="canvas-wrap">
         <canvas id="canvas"></canvas>
         <div id="overlay" class="hidden">
-          <div class="card">
-            <h2 id="overlay-title"></h2>
-            <ul id="score-list"></ul>
-            <button id="btn-again" class="primary">Neue Runde</button>
-            <p id="overlay-hint" class="hint"></p>
-            <button id="btn-menu" class="link">Zum Hauptmenü</button>
-          </div>
+          <div class="card wide" id="overlay-card"></div>
         </div>
       </div>
       <div id="controls">
@@ -67,9 +69,14 @@
           <input id="power" type="range" min="10" max="100" step="1" />
         </div>
         <div id="weapons"></div>
+        <div id="drive">
+          <button id="btn-left" title="Nach links fahren (A)">◀</button>
+          <span id="fuel"></span>
+          <button id="btn-right" title="Nach rechts fahren (D)">▶</button>
+        </div>
         <button id="btn-fire" class="fire">FEUER!</button>
       </div>
-      <p class="hint keys">Tastatur: ←/→ Winkel · ↑/↓ Kraft · 1–5 Waffe · S Schild · Leertaste Feuer (Shift = feiner)</p>
+      <p class="hint keys">Tastatur: ←/→ Winkel · ↑/↓ Kraft · 1–7 Waffe · S Schild · A/D fahren · Leertaste Feuer (Shift = feiner)</p>
     </section>
   </main>
 
