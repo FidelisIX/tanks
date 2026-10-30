@@ -1,0 +1,16 @@
+{
+  "name": "krater-kommando",
+  "version": "1.0.0",
+  "description": "Rundenbasiertes Online-Artillerie-Spiel für 2–4 Spieler",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

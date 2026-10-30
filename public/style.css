@@ -1,0 +1,112 @@
+:root {
+  --bg: #12151c;
+  --card: #1c212c;
+  --line: #2c3442;
+  --text: #e9edf3;
+  --muted: #8d97a8;
+  --accent: #f08a24;
+  --danger: #e8553b;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 1240px; margin: 0 auto; padding: 12px 16px 24px; }
+header { text-align: center; margin-bottom: 12px; }
+h1 { margin: 4px 0 0; font-size: 28px; letter-spacing: 1px; color: var(--accent); }
+.tag { margin: 2px 0 0; color: var(--muted); }
+.hidden { display: none !important; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 380px;
+  margin: 20px auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+label { display: flex; flex-direction: column; gap: 6px; text-align: left; color: var(--muted); }
+input[type="text"], input:not([type]) {
+  background: #0f1218;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 16px;
+}
+#code { text-transform: uppercase; letter-spacing: 4px; text-align: center; flex: 1; min-width: 0; }
+.row { display: flex; gap: 8px; }
+button {
+  background: #2a3140;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 15px;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { filter: brightness(1.2); }
+button:disabled { opacity: 0.45; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #1a1205; font-weight: 600; }
+button.link { background: none; border: none; color: var(--muted); text-decoration: underline; }
+.or { color: var(--muted); font-size: 13px; }
+.error { color: var(--danger); min-height: 1.2em; margin: 0; }
+.hint { color: var(--muted); font-size: 13px; margin: 0; }
+.code { font-size: 44px; font-weight: 700; letter-spacing: 10px; color: var(--accent); }
+
+#player-list, #score-list { list-style: none; padding: 0; margin: 0; text-align: left; }
+#player-list li, #score-list li {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-bottom: 1px solid var(--line);
+}
+.dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+.badge { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+#topbar {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 6px 2px; font-weight: 600;
+}
+#canvas-wrap { position: relative; }
+canvas {
+  display: block; width: 100%; height: auto;
+  border-radius: 10px; border: 1px solid var(--line);
+  touch-action: none;
+}
+#overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(10, 12, 16, 0.6);
+  border-radius: 10px;
+}
+#overlay .card { margin: 0; }
+#overlay h2 { margin: 0; }
+
+#controls {
+  display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center;
+  margin-top: 10px; padding: 12px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+}
+.ctl { flex: 1 1 180px; }
+.ctl label { flex-direction: row; justify-content: space-between; }
+.ctl input { width: 100%; accent-color: var(--accent); }
+#weapons { display: flex; gap: 6px; flex-wrap: wrap; flex: 1 1 300px; }
+#weapons button { font-size: 13px; padding: 8px 10px; }
+#weapons button.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+#weapons small { color: var(--muted); margin-left: 4px; }
+button.fire {
+  background: var(--danger); border-color: var(--danger);
+  font-weight: 800; letter-spacing: 1px; padding: 12px 22px; font-size: 17px;
+}
+.keys { margin-top: 8px; text-align: center; }
+@media (max-width: 640px) {
+  .keys { display: none; }
+  h1 { font-size: 22px; }
+  button.fire { flex: 1 1 100%; }
+}

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Krater-Kommando</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Krater-Kommando</h1>
+      <p class="tag">Artillerie-Duell für 2–4 Freunde</p>
+    </header>
+
+    <!-- Lobby -->
+    <section id="screen-menu" class="card">
+      <label>Dein Name
+        <input id="name" maxlength="16" placeholder="z. B. Simon" autocomplete="off" />
+      </label>
+      <button id="btn-create" class="primary">Neuen Raum erstellen</button>
+      <div class="or">oder</div>
+      <div class="row">
+        <input id="code" maxlength="4" placeholder="CODE" autocomplete="off" />
+        <button id="btn-join">Beitreten</button>
+      </div>
+      <p id="menu-error" class="error"></p>
+    </section>
+
+    <!-- Waiting room -->
+    <section id="screen-room" class="card hidden">
+      <p>Raumcode</p>
+      <div id="room-code" class="code"></div>
+      <button id="btn-copy">Einladungslink kopieren</button>
+      <ul id="player-list"></ul>
+      <button id="btn-start" class="primary">Spiel starten</button>
+      <p id="room-hint" class="hint"></p>
+      <button id="btn-leave" class="link">Raum verlassen</button>
+    </section>
+
+    <!-- Game -->
+    <section id="screen-game" class="hidden">
+      <div id="topbar">
+        <span id="turn-label"></span>
+        <span id="wind-label"></span>
+        <span id="timer-label"></span>
+      </div>
+      <div id="canvas-wrap">
+        <canvas id="canvas"></canvas>
+        <div id="overlay" class="hidden">
+          <div class="card">
+            <h2 id="overlay-title"></h2>
+            <ul id="score-list"></ul>
+            <button id="btn-again" class="primary">Neue Runde</button>
+            <p id="overlay-hint" class="hint"></p>
+            <button id="btn-menu" class="link">Zum Hauptmenü</button>
+          </div>
+        </div>
+      </div>
+      <div id="controls">
+        <div class="ctl">
+          <label>Winkel <span><b id="angle-val"></b>°</span></label>
+          <input id="angle" type="range" min="0" max="180" step="1" />
+        </div>
+        <div class="ctl">
+          <label>Kraft <b id="power-val"></b></label>
+          <input id="power" type="range" min="10" max="100" step="1" />
+        </div>
+        <div id="weapons"></div>
+        <button id="btn-fire" class="fire">FEUER!</button>
+      </div>
+      <p class="hint keys">Tastatur: ←/→ Winkel · ↑/↓ Kraft · 1–4 Waffe · Leertaste Feuer (Shift = feiner)</p>
+    </section>
+  </main>
+
+  <script src="/shared/physics.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
