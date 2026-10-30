@@ -10,7 +10,7 @@ Wer als Letzter übrig bleibt, gewinnt die Runde.
 2. Den **Einladungslink** (oder den 4-stelligen Code) an Freunde schicken.
 3. Wenn alle drin sind, startet der Gastgeber das Spiel.
 
-**Steuerung:** ←/→ Winkel · ↑/↓ Kraft · 1–4 Waffe · Leertaste Feuer (Shift für feine Schritte).
+**Steuerung:** ←/→ Winkel · ↑/↓ Kraft · 1–5 Waffe · S Schild · Leertaste Feuer (Shift für feine Schritte).
 Auf dem Handy über Schieberegler und Buttons.
 
 | Waffe | Wirkung | Munition |
@@ -19,6 +19,11 @@ Auf dem Handy über Schieberegler und Buttons.
 | Schwere Bombe | großer Krater, viel Schaden | 2 |
 | Dreierfächer | drei Geschosse im Fächer | 3 |
 | Erdklumpen | baut Gelände auf (Deckung / Gegner eingraben) | 2 |
+| Ball | rollt nach dem Aufprall den Hang hinunter, prallt an steilen Wänden ab und explodiert, wenn er liegen bleibt oder einen Panzer berührt | 3 |
+
+**Schild** (einmal pro Spiel, kostet den Zug): Eine Energieblase mit 60 Punkten. Gegnerische Geschosse explodieren schon an der Blase, und der Schild fängt den Schaden ab, bis seine Punkte aufgebraucht sind. Fallschaden geht trotzdem durch.
+
+**Wind:** Geschosse spüren Luftwiderstand relativ zur bewegten Luft. Der Wind weht in der Höhe stärker als am Boden. Schwere Geschosse (Schwere Bombe) werden weniger abgetrieben, leichte (Dreierfächer, Erdklumpen) stärker.
 
 Jeder Zug hat 40 Sekunden. Wenn Boden unter einem Panzer wegbricht, fällt er und nimmt Fallschaden.
 

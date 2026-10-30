@@ -73,6 +73,18 @@
       case 'tanks':
         tanks = msg.tanks;
         break;
+      case 'shield': {
+        tanks = msg.tanks;
+        phase = 'anim';
+        const t = tankById(msg.id);
+        if (t) {
+          effects.push({ shieldPulse: true, x: t.x, y: t.y - 6, age: 0 });
+          floaters.push({ x: t.x, y: t.y - 50, text: 'Schild!', age: 0, color: '#7fd8ff' });
+        }
+        sound('shield');
+        updateControls();
+        break;
+      }
       case 'gameOver':
         setTimeout(() => showGameOver(msg), anim ? 1800 : 300);
         break;
@@ -187,13 +199,17 @@
       return `<button data-w="${k}" class="${t && t.weapon === k ? 'active' : ''}" ${
         !mine || ammo === 0 ? 'disabled' : ''
       }>${i + 1}. ${w.name}<small>${label}</small></button>`;
-    }).join('');
+    }).join('') +
+      `<button id="btn-shield" ${!mine || !t || t.shieldLeft <= 0 ? 'disabled' : ''} title="Kostet den Zug">S. Schild<small>×${
+        t ? t.shieldLeft : 1
+      }</small></button>`;
     const cur = tankById(currentId);
     $('turn-label').innerHTML = cur
       ? `<span style="color:${cur.color}">●</span> ${mine ? 'Du bist dran!' : `${esc(cur.name)} ist dran`}`
       : '';
     const arrow = wind === 0 ? '·' : wind > 0 ? '→'.repeat(Math.ceil(Math.abs(wind) / 4)) : '←'.repeat(Math.ceil(Math.abs(wind) / 4));
     $('wind-label').textContent = `Wind ${arrow} ${Math.abs(wind)}`;
+    $('wind-label').title = 'In der Höhe weht der Wind stärker als am Boden.';
   }
 
   function setAim(changes) {
@@ -228,6 +244,13 @@
     updateControls();
   }
 
+  function raiseShield() {
+    if (!isMyTurn() || myTank().shieldLeft <= 0) return;
+    send({ type: 'shield' });
+    phase = 'wait';
+    updateControls();
+  }
+
   // ---------- shot animation ----------
   function startAnim(msg) {
     phase = 'anim';
@@ -257,10 +280,13 @@
     if (!anim) return;
     const { msg } = anim;
     terrain = msg.terrain;
-    const before = new Map(tanks.map((t) => [t.id, t.hp]));
+    const before = new Map(tanks.map((t) => [t.id, t]));
     tanks = msg.tanks;
     for (const t of tanks) {
-      const lost = (before.get(t.id) ?? t.hp) - t.hp;
+      const old = before.get(t.id) || t;
+      const lost = old.hp - t.hp;
+      const blocked = (old.shield || 0) - (t.shield || 0);
+      if (blocked > 0) floaters.push({ x: t.x + 22, y: t.y - 58, text: `🛡 -${blocked}`, age: 0, color: '#7fd8ff' });
       if (lost > 0) floaters.push({ x: t.x, y: t.y - 40, text: `-${lost}`, age: 0, color: '#ff6b5a' });
       if (lost > 0 && !t.alive) floaters.push({ x: t.x, y: t.y - 60, text: 'zerstört!', age: 0, color: '#fff' });
     }
@@ -284,6 +310,18 @@
   function sound(kind, size = 30) {
     try {
       actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      if (kind === 'shield') {
+        const o = actx.createOscillator();
+        const g = actx.createGain();
+        o.frequency.setValueAtTime(300, actx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(900, actx.currentTime + 0.4);
+        g.gain.setValueAtTime(0.15, actx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.5);
+        o.connect(g).connect(actx.destination);
+        o.start();
+        o.stop(actx.currentTime + 0.5);
+        return;
+      }
       const dur = kind === 'fire' ? 0.25 : 0.4 + size / 100;
       const buf = actx.createBuffer(1, actx.sampleRate * dur, actx.sampleRate);
       const d = buf.getChannelData(0);
@@ -399,6 +437,19 @@
     ctx.fillStyle = t.hp > 50 ? '#6fd36f' : t.hp > 25 ? '#f2c230' : '#e8553b';
     ctx.fillRect(t.x - 20, t.y - 34, 40 * (t.hp / 100), 5);
 
+    if (t.shield > 0) {
+      const pulse = 0.25 + 0.1 * Math.sin(now / 300);
+      const g = ctx.createRadialGradient(t.x, t.y - 6, P.SHIELD_RADIUS * 0.5, t.x, t.y - 6, P.SHIELD_RADIUS);
+      g.addColorStop(0, 'rgba(127,216,255,0)');
+      g.addColorStop(1, `rgba(127,216,255,${pulse + (0.4 * t.shield) / P.SHIELD_HP})`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y - 6, P.SHIELD_RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#7fd8ff';
+      ctx.fillRect(t.x - 20, t.y - 28, 40 * (t.shield / P.SHIELD_HP), 3);
+    }
+
     if (t.id === currentId && phase === 'aim') {
       const bob = Math.sin(now / 180) * 4;
       ctx.fillStyle = t.color;
@@ -440,10 +491,21 @@
         ctx.lineTo(x, 2);
         ctx.fill();
       }
-      ctx.fillStyle = s.explosion && s.explosion.dirt ? '#8a6a3c' : '#fff3c4';
+      const isBall = anim.msg.weapon === 'ball';
+      ctx.fillStyle = s.explosion && s.explosion.dirt ? '#8a6a3c' : isBall ? '#d9dde4' : '#fff3c4';
       ctx.beginPath();
-      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.arc(x, y, isBall ? 5 : 4, 0, Math.PI * 2);
       ctx.fill();
+      if (isBall) {
+        // spinning stripe
+        const spin = x / 5;
+        ctx.strokeStyle = '#e8553b';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x - Math.cos(spin) * 5, y - Math.sin(spin) * 5);
+        ctx.lineTo(x + Math.cos(spin) * 5, y + Math.sin(spin) * 5);
+        ctx.stroke();
+      }
     });
   }
 
@@ -451,7 +513,13 @@
     effects = effects.filter((e) => e.age < (e.debris ? 60 : 30));
     for (const e of effects) {
       e.age++;
-      if (e.debris) {
+      if (e.shieldPulse) {
+        ctx.strokeStyle = `rgba(127,216,255,${1 - e.age / 30})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, P.SHIELD_RADIUS * (0.3 + e.age / 25), 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (e.debris) {
         e.vy += 0.15;
         e.x += e.vx;
         e.y += e.vy;
@@ -565,6 +633,7 @@
   $('angle').oninput = (e) => setAim({ angle: +e.target.value });
   $('power').oninput = (e) => setAim({ power: +e.target.value });
   $('weapons').onclick = (e) => {
+    if (e.target.closest('#btn-shield')) return raiseShield();
     const b = e.target.closest('button[data-w]');
     if (b) setAim({ weapon: b.dataset.w });
   };
@@ -581,6 +650,8 @@
       case 'ArrowUp': setAim({ power: t.power + (e.shiftKey ? 1 : 2) }); break;
       case 'ArrowDown': setAim({ power: t.power - (e.shiftKey ? 1 : 2) }); break;
       case ' ': fire(); break;
+      case 's':
+      case 'S': raiseShield(); break;
       default: {
         const i = Number(e.key) - 1;
         if (P.WEAPON_ORDER[i]) setAim({ weapon: P.WEAPON_ORDER[i] });

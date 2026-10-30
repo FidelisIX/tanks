@@ -86,6 +86,7 @@ function publicTanks(game) {
   return game.tanks.map((t) => ({
     id: t.id, name: t.name, color: t.color, x: t.x, y: t.y, hp: t.hp, alive: t.alive,
     angle: t.angle, power: t.power, weapon: t.weapon, ammo: t.ammo,
+    shield: t.shield, shieldLeft: t.shieldLeft,
   }));
 }
 
@@ -105,6 +106,7 @@ function startGame(room) {
     return {
       id: p.id, name: p.name, color: p.color, x, y: terrain[x], hp: 100, alive: true,
       angle: x < P.W / 2 ? 45 : 135, power: 60, weapon: 'shell', ammo,
+      shield: 0, shieldLeft: 1,
     };
   });
   room.state = 'playing';
@@ -161,7 +163,7 @@ function fire(room, tank) {
   const snapshot = g.terrain.slice();
   const angles = (weapon.spread || [0]).map((d) => tank.angle + d);
   const shells = angles.map((ang) => {
-    const sim = P.simulateShot(snapshot, g.tanks, tank.id, P.barrelTip(tank, ang), ang, tank.power, g.wind);
+    const sim = P.simulateShot(snapshot, g.tanks, tank.id, P.barrelTip(tank, ang), ang, tank.power, g.wind, weapon);
     const explosion = sim.impact
       ? { x: sim.impact.x, y: sim.impact.y, r: weapon.radius, dirt: !!weapon.dirt, tick: sim.path.length - 1 }
       : null;
@@ -173,18 +175,15 @@ function fire(room, tank) {
     for (const t of g.tanks) {
       if (!t.alive) continue;
       const dmg = P.explosionDamage(t, s.explosion, weapon);
-      if (dmg > 0) {
-        t.hp = Math.max(0, t.hp - dmg);
-        hits.push({ id: t.id, dmg });
-      }
+      if (dmg > 0) hits.push({ id: t.id, ...damage(t, dmg) });
     }
     P.applyCrater(g.terrain, s.explosion);
   }
   const fall = P.settleTanks(g.terrain, g.tanks);
   for (const [id, dmg] of Object.entries(fall)) {
     const t = g.tanks.find((tt) => tt.id === id);
-    t.hp = Math.max(0, t.hp - dmg);
-    hits.push({ id, dmg, fall: true });
+    t.hp = Math.max(0, t.hp - dmg); // the shield does not soften a fall
+    hits.push({ id, dmg, absorbed: 0, fall: true });
   }
   for (const t of g.tanks) if (t.alive && t.hp <= 0) t.alive = false;
 
@@ -202,6 +201,26 @@ function fire(room, tank) {
     tanks: publicTanks(g),
   });
   g.timer = setTimeout(() => nextTurn(room), animMs);
+}
+
+// Explosion damage hits the shield first.
+function damage(tank, dmg) {
+  const absorbed = Math.min(tank.shield, dmg);
+  tank.shield -= absorbed;
+  tank.hp = Math.max(0, tank.hp - (dmg - absorbed));
+  return { dmg: dmg - absorbed, absorbed };
+}
+
+// Raising the shield uses up the turn.
+function raiseShield(room, tank) {
+  const g = room.game;
+  if (tank.shieldLeft <= 0) return;
+  tank.shieldLeft--;
+  tank.shield = P.SHIELD_HP;
+  clearTimeout(g.timer);
+  g.phase = 'anim';
+  broadcast(room, { type: 'shield', id: tank.id, tanks: publicTanks(g) });
+  g.timer = setTimeout(() => nextTurn(room), 1500);
 }
 
 function leaveRoom(player) {
@@ -300,6 +319,13 @@ wss.on('connection', (ws) => {
         const g = room.game;
         if (g.currentId !== player.id || g.phase !== 'aim') return;
         fire(room, g.tanks[g.turnIdx]);
+        break;
+      }
+      case 'shield': {
+        if (!room || room.state !== 'playing') return;
+        const g = room.game;
+        if (g.currentId !== player.id || g.phase !== 'aim') return;
+        raiseShield(room, g.tanks[g.turnIdx]);
         break;
       }
       case 'leave':

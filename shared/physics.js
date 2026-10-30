@@ -8,7 +8,13 @@
   const H = 650;
   const GRAVITY = 0.2;
   const POWER_SCALE = 0.17;
-  const WIND_SCALE = 0.0025;
+  const DRAG = 0.00022; // quadratic air drag, scaled per weapon by `drag`
+  const WIND_SPEED = 0.7; // air speed (px/tick) per wind unit near the ground
+  const ROLL_FRICTION = 0.012;
+  const BALL_RADIUS = 4;
+  const MAX_ROLL_TICKS = 450;
+  const SHIELD_RADIUS = 30;
+  const SHIELD_HP = 60;
   const MAX_WIND = 10;
   const TANK_RADIUS = 13;
   const BARREL = 20;
@@ -21,13 +27,15 @@
   const COLORS = ['#e8553b', '#3ba7e8', '#f2c230', '#9b5de5'];
 
   // ammo -1 = unlimited
+  // drag: relative air resistance (heavy shells are pushed around less by wind)
   const WEAPONS = {
-    shell: { name: 'Granate', radius: 28, damage: 35, ammo: -1 },
-    heavy: { name: 'Schwere Bombe', radius: 55, damage: 55, ammo: 2 },
-    triple: { name: 'Dreierfächer', radius: 22, damage: 24, ammo: 3, spread: [-5, 0, 5] },
-    dirt: { name: 'Erdklumpen', radius: 45, damage: 0, ammo: 2, dirt: true },
+    shell: { name: 'Granate', radius: 28, damage: 35, ammo: -1, drag: 1 },
+    heavy: { name: 'Schwere Bombe', radius: 55, damage: 55, ammo: 2, drag: 0.6 },
+    triple: { name: 'Dreierfächer', radius: 22, damage: 24, ammo: 3, drag: 1.3, spread: [-5, 0, 5] },
+    dirt: { name: 'Erdklumpen', radius: 45, damage: 0, ammo: 2, drag: 1.5, dirt: true },
+    ball: { name: 'Ball', radius: 30, damage: 40, ammo: 3, drag: 1.1, roll: true },
   };
-  const WEAPON_ORDER = ['shell', 'heavy', 'triple', 'dirt'];
+  const WEAPON_ORDER = ['shell', 'heavy', 'triple', 'dirt', 'ball'];
 
   function mulberry32(seed) {
     return function () {
@@ -113,40 +121,103 @@
     return { x: tank.x, y: tank.y - 6 };
   }
 
+  // Air speed at height y: wind gets stronger with altitude (simple wind-shear profile).
+  function windAt(wind, y) {
+    const alt = Math.max(0, Math.min(1.5, (H - y) / H));
+    return wind * WIND_SPEED * (0.5 + alt);
+  }
+
+  function slopeAt(terrain, x) {
+    const a = terrain[Math.max(0, Math.floor(x) - 3)];
+    const b = terrain[Math.min(W - 1, Math.floor(x) + 3)];
+    return (b - a) / 6; // dy/dx, positive = downhill to the right
+  }
+
+  function hitsTank(tanks, shooterId, x, y, t) {
+    for (const tank of tanks) {
+      if (!tank.alive) continue;
+      const own = tank.id === shooterId;
+      const c = tankCenter(tank);
+      const d = Math.hypot(x - c.x, y - c.y);
+      // a shield bubble catches enemy shells; your own shell passes through your own shield
+      if (!own && tank.shield > 0 && d < SHIELD_RADIUS) return true;
+      if ((!own || t >= 8) && d < TANK_RADIUS) return true;
+    }
+    return false;
+  }
+
   // Returns { path: [[x,y],...] one point per tick, impact: {x,y} | null }
-  function simulateShot(terrain, tanks, shooterId, start, angleDeg, power, wind) {
+  function simulateShot(terrain, tanks, shooterId, start, angleDeg, power, wind, weapon) {
     const a = (angleDeg * Math.PI) / 180;
+    const drag = DRAG * (weapon.drag || 1);
     let x = start.x;
     let y = start.y;
     let vx = Math.cos(a) * power * POWER_SCALE;
     let vy = -Math.sin(a) * power * POWER_SCALE;
+    let rolling = false;
+    let rollTicks = 0;
+    let slowTicks = 0;
     const dt = 1 / SUBSTEPS;
     const path = [[round1(x), round1(y)]];
+    const impact = () => {
+      path.push([round1(x), round1(y)]);
+      return { path, impact: { x: round1(x), y: round1(y) } };
+    };
+
     for (let t = 1; t <= MAX_TICKS; t++) {
       for (let s = 0; s < SUBSTEPS; s++) {
-        vx += wind * WIND_SCALE * dt;
-        vy += GRAVITY * dt;
-        x += vx * dt;
-        y += vy * dt;
-        if (x < -300 || x > W + 300 || y > H + 50) {
-          path.push([round1(x), round1(y)]);
-          return { path, impact: null };
-        }
-        let hit = x >= 0 && x < W && y >= terrain[Math.floor(x)];
-        if (!hit) {
-          for (const tank of tanks) {
-            if (!tank.alive || (tank.id === shooterId && t < 8)) continue;
-            const c = tankCenter(tank);
-            if (Math.hypot(x - c.x, y - c.y) < TANK_RADIUS) {
-              hit = true;
-              break;
-            }
+        if (!rolling) {
+          // gravity + quadratic drag relative to the moving air
+          const rvx = vx - windAt(wind, y);
+          const rv = Math.hypot(rvx, vy);
+          vx -= drag * rv * rvx * dt;
+          vy += (GRAVITY - drag * rv * vy) * dt;
+          x += vx * dt;
+          y += vy * dt;
+          if (x < -300 || x > W + 300 || y > H + 50) {
+            path.push([round1(x), round1(y)]);
+            return { path, impact: null };
           }
+          if (hitsTank(tanks, shooterId, x, y, t)) return impact();
+          if (x >= 0 && x < W && y >= terrain[Math.floor(x)]) {
+            if (!weapon.roll) return impact();
+            // touch down: keep the velocity component along the slope
+            const sl = slopeAt(terrain, x);
+            vx = ((vx + vy * sl) / (1 + sl * sl)) * 0.8;
+            vy = 0;
+            y = terrain[Math.floor(x)] - BALL_RADIUS;
+            rolling = true;
+          }
+        } else {
+          const sl = slopeAt(terrain, x);
+          vx += ((GRAVITY * sl) / (1 + sl * sl)) * dt;
+          vx -= Math.sign(vx) * Math.min(Math.abs(vx), ROLL_FRICTION * dt);
+          vx *= 1 - 0.006 * dt; // rolling resistance grows with speed
+          const nx = x + vx * dt;
+          if (nx < 0 || nx >= W) {
+            x = nx;
+            path.push([round1(x), round1(y)]);
+            return { path, impact: null }; // rolled off the map
+          }
+          const ground = terrain[Math.floor(x)];
+          const next = terrain[Math.floor(nx)];
+          const limit = Math.max(3, 2.5 * Math.abs(nx - x));
+          if (ground - next > limit) {
+            vx *= -0.4; // too steep: bounce off the wall
+          } else if (next - ground > limit) {
+            x = nx; // edge of a cliff: fly again
+            rolling = false;
+          } else {
+            x = nx;
+            y = next - BALL_RADIUS;
+          }
+          if (hitsTank(tanks, shooterId, x, y, MAX_TICKS)) return impact();
         }
-        if (hit) {
-          path.push([round1(x), round1(y)]);
-          return { path, impact: { x: round1(x), y: round1(y) } };
-        }
+      }
+      if (rolling) {
+        rollTicks++;
+        slowTicks = Math.abs(vx) < 0.08 ? slowTicks + 1 : 0;
+        if (slowTicks > 15 || rollTicks > MAX_ROLL_TICKS) return impact();
       }
       path.push([round1(x), round1(y)]);
     }
@@ -185,7 +256,7 @@
   }
 
   return {
-    W, H, GRAVITY, MAX_WIND, TANK_RADIUS, BARREL, TURRET_Y, ANIM_SPEED, TURN_SECONDS,
+    W, H, GRAVITY, MAX_WIND, SHIELD_RADIUS, SHIELD_HP, TANK_RADIUS, BARREL, TURRET_Y, ANIM_SPEED, TURN_SECONDS,
     MAX_PLAYERS, COLORS, WEAPONS, WEAPON_ORDER,
     generateTerrain, placeTanks, carve, addDirt, applyCrater, barrelTip, simulateShot,
     explosionDamage, settleTanks,
