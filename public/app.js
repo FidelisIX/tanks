@@ -23,6 +23,9 @@
   let shopDeadline = 0;
   let driveTimer = null;
   let shakeUntil = 0;
+  let lastMsgAt = 0;
+  let reconnectUntil = 0;
+  let reconnectTimer = null;
 
   const canvas = $('canvas');
   const ctx = canvas.getContext('2d');
@@ -32,14 +35,112 @@
   // ---------- connection ----------
   function connect() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    ws = new WebSocket(`${proto}://${location.host}`);
-    ws.onmessage = (e) => handle(JSON.parse(e.data));
-    ws.onclose = () => {
-      showError('Verbindung zum Server verloren. Seite neu laden.');
-      show('menu');
+    const sock = new WebSocket(`${proto}://${location.host}`);
+    ws = sock;
+    lastMsgAt = performance.now();
+    sock.onmessage = (e) => {
+      lastMsgAt = performance.now();
+      handle(JSON.parse(e.data));
     };
-    return new Promise((resolve) => (ws.onopen = resolve));
+    sock.onclose = (e) => {
+      if (ws === sock) connectionLost(e.code);
+    };
+    return new Promise((resolve, reject) => {
+      sock.onopen = resolve;
+      sock.onerror = reject;
+    });
   }
+
+  // ---------- reconnecting ----------
+  // The seat token lives in sessionStorage (per tab, survives reloads) and in
+  // localStorage (survives closing the tab and opening the invite link again).
+  const SESSION_KEY = 'kk-session';
+  function saveSession(code, token) {
+    const v = JSON.stringify({ code, token });
+    for (const store of [sessionStorage, localStorage]) {
+      try {
+        store.setItem(SESSION_KEY, v);
+      } catch {
+        /* storage unavailable */
+      }
+    }
+  }
+  function loadSession() {
+    for (const store of [sessionStorage, localStorage]) {
+      try {
+        const v = JSON.parse(store.getItem(SESSION_KEY));
+        if (v && v.code && v.token) return v;
+      } catch {
+        /* storage unavailable */
+      }
+    }
+    return null;
+  }
+  function clearSession() {
+    for (const store of [sessionStorage, localStorage]) {
+      try {
+        store.removeItem(SESSION_KEY);
+      } catch {
+        /* storage unavailable */
+      }
+    }
+  }
+
+  function banner(text) {
+    $('conn-banner').textContent = text || '';
+    $('conn-banner').classList.toggle('hidden', !text);
+  }
+
+  function connectionLost(code) {
+    ws = null;
+    clearInterval(driveTimer);
+    if (code === 4000) {
+      room = null;
+      banner('');
+      showError('Das Spiel läuft jetzt in einem anderen Tab weiter.');
+      return show('menu');
+    }
+    const session = loadSession();
+    if (!room || !session) {
+      showError('Verbindung zum Server verloren.');
+      return show('menu');
+    }
+    phase = 'idle';
+    updateControls();
+    reconnectUntil = performance.now() + 60000;
+    resume(session);
+  }
+
+  async function resume(session) {
+    clearTimeout(reconnectTimer);
+    if (performance.now() > reconnectUntil) {
+      banner('');
+      room = null;
+      showError('Wiedereinstieg fehlgeschlagen. Der Server ist nicht erreichbar.');
+      return show('menu');
+    }
+    banner('Verbindung verloren – verbinde neu …');
+    try {
+      await connect();
+      send({ type: 'resume', code: session.code, token: session.token });
+    } catch {
+      reconnectTimer = setTimeout(() => resume(session), 2000);
+    }
+  }
+
+  // Heartbeat: a silently dropped connection (e.g. a phone switching networks)
+  // is noticed when the server stops answering.
+  setInterval(() => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (performance.now() - lastMsgAt > 20000) {
+      const sock = ws;
+      sock.onclose = null;
+      sock.close();
+      connectionLost(1006);
+      return;
+    }
+    send({ type: 'ping' });
+  }, 7000);
 
   function send(msg) {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
@@ -52,7 +153,25 @@
         break;
       case 'joined':
         myId = msg.you;
+        saveSession(msg.code, msg.token);
         history.replaceState(null, '', `?room=${msg.code}`);
+        if (msg.resumed) banner('');
+        break;
+      case 'resumeFailed':
+        clearSession();
+        banner('');
+        room = null;
+        showError('Wiedereinstieg nicht möglich: Das Match ist vorbei oder der Server wurde neu gestartet.');
+        show('menu');
+        break;
+      case 'sync':
+        anim = null;
+        applyTurn(msg);
+        if (msg.phase !== 'aim') phase = 'idle'; // a shot is playing out; the next turn message follows
+        updateControls();
+        break;
+      case 'timer':
+        deadline = performance.now() + msg.timeLeft;
         break;
       case 'room':
         room = msg;
@@ -60,6 +179,7 @@
         renderRoom();
         break;
       case 'left':
+        clearSession();
         room = null;
         history.replaceState(null, '', location.pathname);
         show('menu');
@@ -130,11 +250,12 @@
       overlayVisible = false;
       show('game');
     }
+    if (room.state === 'shop' || room.state === 'over') show('game');
     $('room-code').textContent = room.code;
     $('player-list').innerHTML = room.players
       .map(
         (p) => `<li><span class="dot" style="background:${p.color}"></span>${esc(p.name)}${
-          p.id === myId ? ' (du)' : ''
+          p.id === myId ? ' (du)' : p.connected ? '' : ' <span class="offline">(getrennt)</span>'
         }<span class="badge">${p.id === room.hostId ? 'Gastgeber' : ''}</span></li>`
       )
       .join('');
@@ -148,6 +269,11 @@
         : ''
       : 'Warte, bis der Gastgeber das Match startet …';
     renderOverlay();
+  }
+
+  function isOffline(id) {
+    const p = room && room.players.find((pp) => pp.id === id);
+    return !!p && p.connected === false;
   }
 
   function me() {
@@ -279,7 +405,7 @@
       }</small></button>`;
     const cur = tankById(currentId);
     $('turn-label').innerHTML = cur
-      ? `<span style="color:${cur.color}">●</span> ${mine ? 'Du bist dran!' : `${esc(cur.name)} ist dran`}`
+      ? `<span style="color:${cur.color}">●</span> ${mine ? 'Du bist dran!' : `${esc(cur.name)} ist dran${isOffline(cur.id) ? ' (getrennt)' : ''}`}`
       : '';
     const arrow = wind === 0 ? '·' : wind > 0 ? '→'.repeat(Math.ceil(Math.abs(wind) / 4)) : '←'.repeat(Math.ceil(Math.abs(wind) / 4));
     $('wind-label').textContent = `Wind ${arrow} ${Math.abs(wind)}`;
@@ -520,8 +646,9 @@
     // name + hp
     ctx.font = '600 13px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#fff';
-    ctx.fillText(t.name, t.x, t.y - 40);
+    const offline = isOffline(t.id);
+    ctx.fillStyle = offline ? '#8d97a8' : '#fff';
+    ctx.fillText(offline ? `${t.name} (getrennt)` : t.name, t.x, t.y - 40);
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(t.x - 20, t.y - 34, 40, 5);
     ctx.fillStyle = t.hp > t.maxHp / 2 ? '#6fd36f' : t.hp > t.maxHp / 4 ? '#f2c230' : '#e8553b';
@@ -717,6 +844,12 @@
   $('name').value = localStorageGet('name') || '';
   const urlRoom = new URLSearchParams(location.search).get('room');
   if (urlRoom) $('code').value = urlRoom.toUpperCase();
+  const saved = loadSession();
+  if (urlRoom && saved && saved.code === urlRoom.toUpperCase()) {
+    // reopened or reloaded: try to take the seat back
+    reconnectUntil = performance.now() + 15000;
+    resume(saved);
+  }
 
   function localStorageGet(k) {
     try {
@@ -762,7 +895,10 @@
     else if (b.dataset.action === 'ready') send({ type: 'ready', ready: !me().ready });
     else if (b.dataset.action === 'again') send({ type: 'start' });
     else if (b.dataset.action === 'lobby') send({ type: 'lobby' });
-    else if (b.dataset.action === 'menu') send({ type: 'leave' });
+    else if (b.dataset.action === 'menu') {
+      clearSession();
+      send({ type: 'leave' });
+    }
   };
   for (const [id, dir] of [['btn-left', -1], ['btn-right', 1]]) {
     const btn = $(id);
@@ -774,7 +910,10 @@
     });
     for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, stop);
   }
-  $('btn-leave').onclick = () => send({ type: 'leave' });
+  $('btn-leave').onclick = () => {
+    clearSession();
+    send({ type: 'leave' });
+  };
   $('btn-copy').onclick = async () => {
     const link = `${location.origin}${location.pathname}?room=${room.code}`;
     try {

@@ -56,6 +56,14 @@ Nach jeder Runde öffnet sich der Shop für alle gleichzeitig, für 30 Sekunden 
   - Stoßdämpfer: −50 % Fallschaden pro Stufe, 60/90
   - Turbo-Kanone: +10 max. Kraft, 70/110
 
+### Verbindungsabbruch
+
+Bricht die Verbindung ab, z. B. durch einen Netzwechsel am Handy, ein Neuladen der Seite oder einen geschlossenen Tab, bleibt dein Platz **60 Sekunden** reserviert.
+Der Browser verbindet sich automatisch neu. Nach dem Schließen des Tabs reicht es, den Einladungslink wieder zu öffnen.
+Ist ein getrennter Spieler am Zug, wird sein Zug nach 8 Sekunden übersprungen. Im Shop wartet niemand auf ihn.
+Ist er nach 60 Sekunden nicht zurück, scheidet er aus.
+Hinweis: Startet der Server neu (z. B. wenn Render den kostenlosen Dienst schlafen legt), sind alle Räume weg.
+
 ## Lokal starten
 
 ```bash

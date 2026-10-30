@@ -82,7 +82,7 @@ function roomInfo(room) {
     round: room.round,
     shopTimeLeft: room.state === 'shop' ? Math.max(0, room.shopDeadline - Date.now()) : 0,
     players: room.players.map((p) => ({
-      id: p.id, name: p.name, color: p.color, money: p.money, score: p.score, ready: p.ready, inv: p.inv,
+      id: p.id, name: p.name, color: p.color, connected: p.connected, money: p.money, score: p.score, ready: p.ready, inv: p.inv,
     })),
   };
 }
@@ -150,12 +150,15 @@ function nextTurn(room) {
   g.wind = randomWind();
   g.phase = 'aim';
   g.currentId = g.tanks[g.turnIdx].id;
-  g.timer = setTimeout(() => nextTurn(room), P.TURN_SECONDS * 1000);
+  const owner = playerById(room, g.currentId);
+  const ms = owner && owner.connected ? P.TURN_SECONDS * 1000 : OFFLINE_TURN_MS;
+  g.deadline = Date.now() + ms;
+  g.timer = setTimeout(() => nextTurn(room), ms);
   broadcast(room, {
     type: 'turn',
     currentId: g.currentId,
     wind: g.wind,
-    timeLeft: P.TURN_SECONDS * 1000,
+    timeLeft: ms,
     round: room.round,
     rounds: room.rounds,
     terrain: g.terrain,
@@ -183,8 +186,7 @@ function endRound(room, winner) {
   const final = room.round >= room.rounds || room.players.length < 2;
   if (final) room.state = 'over';
   else openShop(room);
-  broadcast(room, roomInfo(room));
-  broadcast(room, {
+  room.lastRoundOver = {
     type: 'roundOver',
     round: room.round,
     rounds: room.rounds,
@@ -192,7 +194,9 @@ function endRound(room, winner) {
     winnerId: winner ? winner.id : null,
     winnerName: winner ? winner.name : null,
     earnings,
-  });
+  };
+  broadcast(room, roomInfo(room));
+  broadcast(room, room.lastRoundOver);
 }
 
 function openShop(room) {
@@ -320,9 +324,61 @@ function move(room, tank, dir) {
   broadcast(room, { type: 'move', id: tank.id, x: tank.x, y: tank.y, fuel: tank.inv.fuel });
 }
 
+// Shop ends early once every connected player is ready.
+function shopDone(room) {
+  const online = room.players.filter((p) => p.connected);
+  return online.length > 0 && online.every((p) => p.ready);
+}
+
+// ---------- reconnecting ----------
+// A dropped player keeps their seat for RECONNECT_GRACE_MS and can resume with their token.
+const RECONNECT_GRACE_MS = 60000;
+const OFFLINE_TURN_MS = 8000;
+
+function disconnect(player) {
+  const room = player.room;
+  if (!room) return;
+  player.connected = false;
+  clearTimeout(player.graceTimer);
+  player.graceTimer = setTimeout(() => leaveRoom(player), RECONNECT_GRACE_MS);
+  broadcast(room, roomInfo(room));
+  if (room.state === 'shop' && shopDone(room)) return startRound(room);
+  const g = room.game;
+  if (room.state === 'playing' && g.currentId === player.id && g.phase === 'aim') {
+    // don't make the others wait the full turn for someone who is gone
+    const ms = Math.min(OFFLINE_TURN_MS, Math.max(0, g.deadline - Date.now()));
+    clearTimeout(g.timer);
+    g.deadline = Date.now() + ms;
+    g.timer = setTimeout(() => nextTurn(room), ms);
+    broadcast(room, { type: 'timer', timeLeft: ms });
+  }
+}
+
+// Sends everything a (re)connecting client needs to pick up where the room is.
+function sendSync(room, player) {
+  const ws = player.ws;
+  if (room.state === 'playing') {
+    const g = room.game;
+    send(ws, {
+      type: 'sync',
+      currentId: g.currentId,
+      wind: g.wind,
+      phase: g.phase,
+      timeLeft: Math.max(0, g.deadline - Date.now()),
+      round: room.round,
+      rounds: room.rounds,
+      terrain: g.terrain,
+      tanks: publicTanks(g),
+    });
+  } else if ((room.state === 'shop' || room.state === 'over') && room.lastRoundOver) {
+    send(ws, room.lastRoundOver);
+  }
+}
+
 function leaveRoom(player) {
   const room = player.room;
   if (!room) return;
+  clearTimeout(player.graceTimer);
   player.room = null;
   room.players = room.players.filter((p) => p !== player);
   if (room.players.length === 0) {
@@ -343,11 +399,12 @@ function leaveRoom(player) {
     clearTimeout(room.shopTimer);
     room.state = 'over';
     broadcast(room, roomInfo(room));
-    broadcast(room, { type: 'roundOver', round: room.round, rounds: room.rounds, final: true, winnerId: null, earnings: {} });
+    room.lastRoundOver = { type: 'roundOver', round: room.round, rounds: room.rounds, final: true, winnerId: null, earnings: {} };
+    broadcast(room, room.lastRoundOver);
     return;
   }
   broadcast(room, roomInfo(room));
-  if (room.state === 'shop' && room.players.every((p) => p.ready)) return startRound(room);
+  if (room.state === 'shop' && shopDone(room)) return startRound(room);
   if (room.state === 'playing') {
     const g = room.game;
     const alive = g.tanks.filter((t) => t.alive);
@@ -363,8 +420,10 @@ function leaveRoom(player) {
 const wss = new WebSocketServer({ server, maxPayload: 4096 });
 
 wss.on('connection', (ws) => {
-  const player = {
-    id: crypto.randomUUID(), ws, name: 'Panzer', color: null, room: null,
+  // `player` is swapped for the stored one when this connection resumes a seat
+  let player = {
+    id: crypto.randomUUID(), token: crypto.randomBytes(18).toString('base64url'), ws, connected: true,
+    name: 'Panzer', color: null, room: null, graceTimer: null,
     inv: P.newInventory(), money: 0, score: 0, ready: false, stats: { damage: 0, kills: 0 }, lastMove: 0,
   };
   ws.isAlive = true;
@@ -391,7 +450,7 @@ wss.on('connection', (ws) => {
         player.color = freeColor(r);
         player.room = r;
         r.players.push(player);
-        send(ws, { type: 'joined', you: player.id, code: r.code });
+        send(ws, { type: 'joined', you: player.id, code: r.code, token: player.token });
         broadcast(r, roomInfo(r));
         break;
       }
@@ -408,7 +467,7 @@ wss.on('connection', (ws) => {
         player.money = 0;
         player.score = 0;
         r.players.push(player);
-        send(ws, { type: 'joined', you: player.id, code: r.code });
+        send(ws, { type: 'joined', you: player.id, code: r.code, token: player.token });
         broadcast(r, roomInfo(r));
         break;
       }
@@ -461,8 +520,29 @@ wss.on('connection', (ws) => {
       case 'ready':
         if (!room || room.state !== 'shop') return;
         player.ready = !!msg.ready;
-        if (room.players.every((p) => p.ready)) startRound(room);
+        if (shopDone(room)) startRound(room);
         else broadcast(room, roomInfo(room));
+        break;
+      case 'resume': {
+        const r = rooms.get(String(msg.code || '').toUpperCase().trim());
+        const p = r && r.players.find((pp) => pp.token === msg.token);
+        if (!p) return send(ws, { type: 'resumeFailed' });
+        if (p === player) return sendSync(r, p);
+        if (player.room) leaveRoom(player);
+        clearTimeout(p.graceTimer);
+        const old = p.ws;
+        p.ws = ws;
+        p.connected = true;
+        player = p;
+        // the same seat open in another tab: that tab gets closed
+        if (old !== ws && old.readyState === old.OPEN) old.close(4000, 'resumed elsewhere');
+        send(ws, { type: 'joined', you: p.id, code: r.code, token: p.token, resumed: true });
+        broadcast(r, roomInfo(r));
+        sendSync(r, p);
+        break;
+      }
+      case 'ping':
+        send(ws, { type: 'pong' });
         break;
       case 'leave':
         leaveRoom(player);
@@ -471,7 +551,9 @@ wss.on('connection', (ws) => {
     }
   });
 
-  ws.on('close', () => leaveRoom(player));
+  ws.on('close', () => {
+    if (player.ws === ws) disconnect(player);
+  });
 });
 
 // Drop dead connections (also keeps Render's proxy from idling the socket out)

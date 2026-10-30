@@ -105,6 +105,11 @@ button.fire {
   font-weight: 800; letter-spacing: 1px; padding: 12px 22px; font-size: 17px;
 }
 .keys { margin-top: 8px; text-align: center; }
+.banner {
+  background: #5a3a12; border: 1px solid var(--accent); color: #ffe2bf;
+  border-radius: 8px; padding: 8px 12px; margin: 0 0 10px; text-align: center; font-weight: 600;
+}
+.offline { color: var(--muted); font-size: 12px; }
 select {
   background: #0f1218; color: var(--text); border: 1px solid var(--line);
   border-radius: 8px; padding: 8px 10px; font-size: 15px;
