@@ -4,6 +4,9 @@ const path = require('path');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const P = require('./shared/physics');
+const { createStore } = require('./server/store');
+const Bot = require('./server/bot');
+const { computeStats } = require('./server/stats');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -15,12 +18,44 @@ const MIME = {
   '.png': 'image/png',
 };
 
-// ---------- static files ----------
+const RECONNECT_GRACE_MS = 60000; // a dropped player keeps their seat this long
+const OFFLINE_TURN_MS = 8000; // turn length for someone who is disconnected
+const HOST_HANDOVER_MS = 15000; // a disconnected host stays host this long (reloads)
+const COUNTDOWN_MS = 5000;
+const RESUME_EXTRA_MS = 5000; // added to running timers after a restore so everyone can reconnect
+const RESTORE_WAIT_MS = 15000; // how long "resume" waits for the old server's backup
+const SNAPSHOT_MAX_AGE_MS = 10 * 60 * 1000;
+const SHUTDOWN_SAVE_TIMEOUT_MS = 8000;
+const SNAPSHOT_VERSION = 1;
+
+// ---------- storage / statistics ----------
+const store = createStore();
+let matches = [];
+const statsState = { loaded: false, error: null };
+store
+  .load()
+  .then((m) => {
+    matches = m;
+    statsState.loaded = true;
+    console.log(`Statistik: ${m.length} Matches geladen (${store.description})`);
+  })
+  .catch((err) => {
+    statsState.error = err.message;
+    console.error('Statistik nicht ladbar:', err.message);
+  });
+
+// ---------- static files + API ----------
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (url.pathname === '/healthz') {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     return res.end('ok');
+  }
+  if (url.pathname === '/api/stats') {
+    const body = computeStats(matches, { mode: url.searchParams.get('mode') || 'all' });
+    body.storage = { persistent: store.persistent, loaded: statsState.loaded, error: statsState.error };
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    return res.end(JSON.stringify(body));
   }
   let file;
   if (url.pathname === '/shared/physics.js') file = path.join(__dirname, 'shared', 'physics.js');
@@ -54,13 +89,15 @@ function newCode() {
   return code;
 }
 
+const hashToken = (token) => crypto.createHash('sha256').update(String(token)).digest('hex');
+
 function send(ws, msg) {
-  if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
+  if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
 }
 
 function broadcast(room, msg) {
   const data = JSON.stringify(msg);
-  for (const p of room.players) if (p.ws.readyState === p.ws.OPEN) p.ws.send(data);
+  for (const p of room.players) if (p.ws && p.ws.readyState === p.ws.OPEN) p.ws.send(data);
 }
 
 function freeColor(room) {
@@ -72,17 +109,41 @@ function cleanName(name) {
   return n || 'Panzer';
 }
 
+function newPlayer(fields) {
+  return {
+    id: crypto.randomUUID(), token: crypto.randomBytes(18).toString('base64url'), tokenHash: null,
+    ws: null, connected: true, isBot: false, difficulty: null,
+    name: 'Panzer', color: null, room: null, graceTimer: null,
+    inv: P.newInventory(), money: 0, score: 0, ready: false, vote: false,
+    stats: { damage: 0, kills: 0 }, match: newMatchStats(), lastMove: 0,
+    ...fields,
+  };
+}
+
+function newMatchStats() {
+  return { damage: 0, kills: 0, roundWins: 0, shots: {}, bestShot: null };
+}
+
+const humans = (room) => room.players.filter((p) => !p.isBot);
+const onlineHumans = (room) => room.players.filter((p) => !p.isBot && p.connected);
+
+function remaining(deadline) {
+  return deadline ? Math.max(0, deadline - Date.now()) : 0;
+}
+
 function roomInfo(room) {
   return {
     type: 'room',
     code: room.code,
     hostId: room.hostId,
-    state: room.state, // 'lobby' | 'playing' | 'shop' | 'over'
+    state: room.state, // 'lobby' | 'countdown' | 'playing' | 'shop' | 'over'
     rounds: room.rounds,
     round: room.round,
-    shopTimeLeft: room.state === 'shop' ? Math.max(0, room.shopDeadline - Date.now()) : 0,
+    shopTimeLeft: room.state === 'shop' ? remaining(room.shopDeadline) : 0,
+    countdownLeft: room.state === 'countdown' ? remaining(room.countdownDeadline) : 0,
     players: room.players.map((p) => ({
-      id: p.id, name: p.name, color: p.color, connected: p.connected, money: p.money, score: p.score, ready: p.ready, inv: p.inv,
+      id: p.id, name: p.name, color: p.color, connected: p.connected, isBot: p.isBot, difficulty: p.difficulty,
+      money: p.money, score: p.score, ready: p.ready, vote: p.vote, inv: p.inv,
     })),
   };
 }
@@ -103,15 +164,43 @@ function playerById(room, id) {
   return room.players.find((p) => p.id === id);
 }
 
+function clearRoomTimers(room) {
+  clearTimeout(room.shopTimer);
+  clearTimeout(room.countdownTimer);
+  clearTimeout(room.hostTimer);
+  if (room.game) clearTimeout(room.game.timer);
+}
+
 // ---------- match / round flow ----------
+function startCountdown(room, ms = COUNTDOWN_MS) {
+  clearRoomTimers(room);
+  room.state = 'countdown';
+  room.countdownDeadline = Date.now() + ms;
+  room.countdownTimer = setTimeout(() => startMatch(room), ms);
+  for (const p of room.players) p.vote = false;
+  broadcast(room, roomInfo(room));
+}
+
 function startMatch(room) {
   for (const p of room.players) {
     p.inv = P.newInventory();
     p.money = 0;
     p.score = 0;
+    p.match = newMatchStats();
   }
   room.round = 0;
+  room.lastRoundOver = null;
   startRound(room);
+}
+
+function makeTank(p, x, terrain) {
+  const hp = P.maxHp(p.inv);
+  return {
+    id: p.id, name: p.name, color: p.color, x, y: terrain[x], hp, maxHp: hp, alive: true,
+    angle: x < P.W / 2 ? 45 : 135, power: 60, maxPower: P.maxPower(p.inv), weapon: 'shell',
+    inv: p.inv, ammo: p.inv.ammo, // shared with the player: what is left carries over to the next round
+    shield: 0, shieldMax: P.shieldHp(p.inv), fallFactor: P.fallFactor(p.inv),
+  };
 }
 
 function startRound(room) {
@@ -123,14 +212,7 @@ function startRound(room) {
   const tanks = room.players.map((p, i) => {
     p.ready = false;
     p.stats = { damage: 0, kills: 0 };
-    const x = xs[i];
-    const hp = P.maxHp(p.inv);
-    return {
-      id: p.id, name: p.name, color: p.color, x, y: terrain[x], hp, maxHp: hp, alive: true,
-      angle: x < P.W / 2 ? 45 : 135, power: 60, maxPower: P.maxPower(p.inv), weapon: 'shell',
-      inv: p.inv, ammo: p.inv.ammo, // shared with the player: what is left carries over to the next round
-      shield: 0, shieldMax: P.shieldHp(p.inv), fallFactor: P.fallFactor(p.inv),
-    };
+    return makeTank(p, xs[i], terrain);
   });
   room.state = 'playing';
   room.game = { terrain, tanks, turnIdx: crypto.randomInt(tanks.length) - 1, wind: 0, phase: 'aim', timer: null };
@@ -152,8 +234,7 @@ function nextTurn(room) {
   g.currentId = g.tanks[g.turnIdx].id;
   const owner = playerById(room, g.currentId);
   const ms = owner && owner.connected ? P.TURN_SECONDS * 1000 : OFFLINE_TURN_MS;
-  g.deadline = Date.now() + ms;
-  g.timer = setTimeout(() => nextTurn(room), ms);
+  setTurnTimer(room, ms);
   broadcast(room, {
     type: 'turn',
     currentId: g.currentId,
@@ -164,6 +245,14 @@ function nextTurn(room) {
     terrain: g.terrain,
     tanks: publicTanks(g),
   });
+  if (owner && owner.isBot) scheduleBotTurn(room, owner);
+}
+
+function setTurnTimer(room, ms) {
+  const g = room.game;
+  clearTimeout(g.timer);
+  g.deadline = Date.now() + ms;
+  g.timer = setTimeout(() => nextTurn(room), ms);
 }
 
 function endRound(room, winner) {
@@ -181,11 +270,14 @@ function endRound(room, winner) {
     e.total = e.damage + e.kills + e.win + e.base;
     p.money += e.total;
     p.score += e.total;
+    if (e.win) p.match.roundWins++;
     earnings[p.id] = e;
   }
   const final = room.round >= room.rounds || room.players.length < 2;
-  if (final) room.state = 'over';
-  else openShop(room);
+  if (final) {
+    room.state = 'over';
+    recordMatch(room);
+  } else openShop(room);
   room.lastRoundOver = {
     type: 'roundOver',
     round: room.round,
@@ -199,34 +291,81 @@ function endRound(room, winner) {
   broadcast(room, room.lastRoundOver);
 }
 
-function openShop(room) {
+function openShop(room, ms = P.SHOP_SECONDS * 1000) {
   room.state = 'shop';
-  room.shopDeadline = Date.now() + P.SHOP_SECONDS * 1000;
+  room.shopDeadline = Date.now() + ms;
   for (const p of room.players) p.ready = false;
+  for (const b of room.players.filter((p) => p.isBot)) botShop(room, b);
   clearTimeout(room.shopTimer);
-  room.shopTimer = setTimeout(() => startRound(room), P.SHOP_SECONDS * 1000);
+  room.shopTimer = setTimeout(() => startRound(room), ms);
+}
+
+// Shop ends early once every connected human is ready (bots shop instantly).
+function shopDone(room) {
+  const online = onlineHumans(room);
+  return online.length > 0 && online.every((p) => p.ready);
 }
 
 function buy(room, player, msg) {
   if (msg.upgrade) {
     const u = P.UPGRADES[msg.upgrade];
-    if (!u) return;
+    if (!u) return false;
     const level = player.inv.upgrades[msg.upgrade];
     const price = u.prices[level];
-    if (price === undefined || player.money < price) return;
+    if (price === undefined || player.money < price) return false;
     player.money -= price;
     player.inv.upgrades[msg.upgrade]++;
   } else {
     const item = P.SHOP_ITEMS[msg.item];
-    if (!item || player.money < item.price) return;
+    if (!item || player.money < item.price) return false;
     player.money -= item.price;
     if (msg.item === 'shield') player.inv.shields += item.qty;
     else if (msg.item === 'fuel') player.inv.fuel += item.qty;
     else player.inv.ammo[msg.item] += item.qty;
   }
-  broadcast(room, roomInfo(room));
+  return true;
 }
 
+function botShop(room, bot) {
+  for (const [kind, name] of Bot.shoppingList(bot.difficulty)) {
+    buy(room, bot, kind === 'upgrade' ? { upgrade: name } : { item: name });
+  }
+  bot.ready = true;
+}
+
+// Rematch: everyone may vote; once all connected humans agree the next match starts.
+function maybeRematch(room) {
+  if (room.state !== 'over' || room.players.length < 2) return;
+  const online = onlineHumans(room);
+  if (online.length > 0 && online.every((p) => p.vote)) startCountdown(room);
+}
+
+// ---------- statistics ----------
+function recordMatch(room) {
+  if (!humans(room).length) return;
+  const ranking = [...room.players].sort((a, b) => b.score - a.score);
+  const match = {
+    room: room.code,
+    endedAt: new Date().toISOString(),
+    rounds: room.round,
+    players: ranking.map((p) => ({
+      name: p.name,
+      isBot: p.isBot,
+      difficulty: p.difficulty,
+      place: 1 + ranking.findIndex((q) => q.score === p.score),
+      score: p.score,
+      damage: p.match.damage,
+      kills: p.match.kills,
+      roundWins: p.match.roundWins,
+      shots: p.match.shots,
+      bestShot: p.match.bestShot,
+    })),
+  };
+  matches.push(match);
+  store.append(match).catch((err) => console.error('Statistik nicht gespeichert:', err.message));
+}
+
+// ---------- shooting ----------
 // Explosion damage hits the shield first. Returns what was actually taken off
 // (no overkill), so points are only paid for real damage.
 function damage(tank, dmg) {
@@ -239,18 +378,24 @@ function damage(tank, dmg) {
 
 function fire(room, tank) {
   const g = room.game;
-  if (tank.ammo[tank.weapon] === 0) return;
-  if (tank.ammo[tank.weapon] > 0) tank.ammo[tank.weapon]--;
+  if (tank.ammo[tank.weapon] === 0) tank.weapon = 'shell'; // empty weapon selected: fall back instead of a dead click
+  const weapon = tank.weapon;
+  if (tank.ammo[weapon] > 0) tank.ammo[weapon]--;
   clearTimeout(g.timer);
   g.phase = 'anim';
 
   const shooter = playerById(room, tank.id);
+  let shotDamage = 0;
   const credit = (victim, amount) => {
-    if (shooter && victim.id !== tank.id) shooter.stats.damage += amount;
+    if (!shooter || victim.id === tank.id) return;
+    shooter.stats.damage += amount;
+    shooter.match.damage += amount;
+    shotDamage += amount;
   };
+  if (shooter) shooter.match.shots[weapon] = (shooter.match.shots[weapon] || 0) + 1;
   const aliveBefore = new Set(g.tanks.filter((t) => t.alive).map((t) => t.id));
 
-  const shells = P.fireShells(g.terrain.slice(), g.tanks, tank, tank.weapon, g.wind);
+  const shells = P.fireShells(g.terrain.slice(), g.tanks, tank, weapon, g.wind);
   const hits = [];
   for (const s of shells.filter((s) => s.explosion).sort((a, b) => a.explosion.tick - b.explosion.tick)) {
     for (const t of g.tanks) {
@@ -276,17 +421,24 @@ function fire(room, tank) {
   for (const t of g.tanks) {
     if (t.alive && t.hp <= 0) {
       t.alive = false;
-      if (shooter && aliveBefore.has(t.id) && t.id !== tank.id) shooter.stats.kills++;
+      if (shooter && aliveBefore.has(t.id) && t.id !== tank.id) {
+        shooter.stats.kills++;
+        shooter.match.kills++;
+      }
     }
+  }
+  if (shooter && shotDamage > 0 && (!shooter.match.bestShot || shotDamage > shooter.match.bestShot.damage)) {
+    shooter.match.bestShot = { damage: shotDamage, weapon };
   }
 
   const end = Math.max(...shells.map((s) => s.startTick + s.path.length));
   const nuked = shells.some((s) => s.w === 'nuke' && s.explosion);
   const animMs = (end / P.ANIM_SPEED) * (1000 / 60) + 1600 + (nuked ? 2200 : 0); // let the mushroom cloud play out
+  if (tank.ammo[weapon] === 0) tank.weapon = 'shell';
   broadcast(room, {
     type: 'shot',
     shooterId: tank.id,
-    weapon: tank.weapon,
+    weapon,
     angle: tank.angle,
     power: tank.power,
     shells,
@@ -294,7 +446,7 @@ function fire(room, tank) {
     terrain: g.terrain,
     tanks: publicTanks(g),
   });
-  g.timer = setTimeout(() => nextTurn(room), animMs);
+  setTurnTimer(room, animMs);
 }
 
 // Raising the shield uses up the turn.
@@ -303,10 +455,9 @@ function raiseShield(room, tank) {
   if (tank.inv.shields <= 0) return;
   tank.inv.shields--;
   tank.shield = tank.shieldMax;
-  clearTimeout(g.timer);
   g.phase = 'anim';
   broadcast(room, { type: 'shield', id: tank.id, tanks: publicTanks(g) });
-  g.timer = setTimeout(() => nextTurn(room), 1500);
+  setTurnTimer(room, 1500);
 }
 
 // Driving costs 1 fuel per pixel; tanks cannot climb walls or drive off cliffs.
@@ -324,33 +475,85 @@ function move(room, tank, dir) {
   broadcast(room, { type: 'move', id: tank.id, x: tank.x, y: tank.y, fuel: tank.inv.fuel });
 }
 
-// Shop ends early once every connected player is ready.
-function shopDone(room) {
-  const online = room.players.filter((p) => p.connected);
-  return online.length > 0 && online.every((p) => p.ready);
+function setAim(room, tank, { angle, power, weapon }) {
+  angle = Number(angle);
+  power = Number(power);
+  if (Number.isFinite(angle)) tank.angle = Math.max(0, Math.min(180, Math.round(angle)));
+  if (Number.isFinite(power)) tank.power = Math.max(10, Math.min(tank.maxPower, Math.round(power)));
+  if (P.WEAPON_ORDER.includes(weapon) && tank.ammo[weapon] !== 0) tank.weapon = weapon;
+  broadcast(room, { type: 'aim', id: tank.id, angle: tank.angle, power: tank.power, weapon: tank.weapon });
+}
+
+// ---------- computer opponents ----------
+function addBot(room, difficulty) {
+  if (room.players.length >= P.MAX_PLAYERS) return;
+  const level = Bot.DIFFICULTIES[difficulty] ? difficulty : 'medium';
+  const used = new Set(room.players.map((p) => p.name));
+  const name = Bot.BOT_NAMES.find((n) => !used.has(n)) || `Bot ${room.players.length + 1}`;
+  const bot = newPlayer({ isBot: true, difficulty: level, name, color: freeColor(room), room, token: null, vote: true });
+  room.players.push(bot);
+}
+
+// The bot "thinks" for a moment, turns the barrel, then fires.
+function scheduleBotTurn(room, bot) {
+  const g = room.game;
+  clearTimeout(g.timer);
+  g.timer = setTimeout(() => {
+    if (room.state !== 'playing' || g.currentId !== bot.id || g.phase !== 'aim') return;
+    const tank = g.tanks[g.turnIdx];
+    const plan = Bot.decide(g, tank, bot.difficulty);
+    if (plan.shield) return raiseShield(room, tank);
+    setAim(room, tank, plan);
+    g.timer = setTimeout(() => {
+      if (room.state === 'playing' && g.currentId === bot.id && g.phase === 'aim') fire(room, tank);
+    }, 700);
+  }, 900 + Math.random() * 1200);
+  g.deadline = Date.now() + P.TURN_SECONDS * 1000;
+}
+
+// ---------- host ----------
+function nextHost(room) {
+  return onlineHumans(room)[0] || humans(room)[0] || null;
+}
+
+function handOverHostLater(room) {
+  clearTimeout(room.hostTimer);
+  room.hostTimer = setTimeout(() => {
+    const host = playerById(room, room.hostId);
+    if (host && host.connected) return;
+    const next = onlineHumans(room)[0];
+    if (next) {
+      room.hostId = next.id;
+      broadcast(room, roomInfo(room));
+    }
+  }, HOST_HANDOVER_MS);
+}
+
+function kick(room, host, targetId) {
+  const target = playerById(room, targetId);
+  if (!target || target === host) return;
+  if (!target.isBot) send(target.ws, { type: 'kicked', message: 'Du wurdest vom Host aus dem Raum entfernt.' });
+  leaveRoom(target);
 }
 
 // ---------- reconnecting ----------
-// A dropped player keeps their seat for RECONNECT_GRACE_MS and can resume with their token.
-const RECONNECT_GRACE_MS = 60000;
-const OFFLINE_TURN_MS = 8000;
-
 function disconnect(player) {
   const room = player.room;
   if (!room) return;
   player.connected = false;
+  player.ws = null;
   clearTimeout(player.graceTimer);
   player.graceTimer = setTimeout(() => leaveRoom(player), RECONNECT_GRACE_MS);
+  if (room.hostId === player.id) handOverHostLater(room);
+  if (!onlineHumans(room).length) return; // nobody left to tell; seats wait for the grace period
   broadcast(room, roomInfo(room));
   if (room.state === 'shop' && shopDone(room)) return startRound(room);
+  if (room.state === 'over') return maybeRematch(room);
   const g = room.game;
   if (room.state === 'playing' && g.currentId === player.id && g.phase === 'aim') {
     // don't make the others wait the full turn for someone who is gone
-    const ms = Math.min(OFFLINE_TURN_MS, Math.max(0, g.deadline - Date.now()));
-    clearTimeout(g.timer);
-    g.deadline = Date.now() + ms;
-    g.timer = setTimeout(() => nextTurn(room), ms);
-    broadcast(room, { type: 'timer', timeLeft: ms });
+    setTurnTimer(room, Math.min(OFFLINE_TURN_MS, remaining(g.deadline)));
+    broadcast(room, { type: 'timer', timeLeft: remaining(g.deadline) });
   }
 }
 
@@ -364,7 +567,7 @@ function sendSync(room, player) {
       currentId: g.currentId,
       wind: g.wind,
       phase: g.phase,
-      timeLeft: Math.max(0, g.deadline - Date.now()),
+      timeLeft: remaining(g.deadline),
       round: room.round,
       rounds: room.rounds,
       terrain: g.terrain,
@@ -381,13 +584,12 @@ function leaveRoom(player) {
   clearTimeout(player.graceTimer);
   player.room = null;
   room.players = room.players.filter((p) => p !== player);
-  if (room.players.length === 0) {
-    if (room.game) clearTimeout(room.game.timer);
-    clearTimeout(room.shopTimer);
+  if (!humans(room).length) {
+    clearRoomTimers(room);
     rooms.delete(room.code);
     return;
   }
-  if (room.hostId === player.id) room.hostId = room.players[0].id;
+  if (room.hostId === player.id) room.hostId = nextHost(room).id;
   if (room.game) {
     const t = room.game.tanks.find((tt) => tt.id === player.id);
     if (t && t.alive) {
@@ -395,16 +597,20 @@ function leaveRoom(player) {
       t.hp = 0;
     }
   }
-  if (room.state === 'shop' && room.players.length < 2) {
-    clearTimeout(room.shopTimer);
-    room.state = 'over';
+  if ((room.state === 'shop' || room.state === 'countdown') && room.players.length < 2) {
+    clearRoomTimers(room);
+    room.state = room.state === 'shop' ? 'over' : 'lobby';
+    if (room.state === 'over') {
+      recordMatch(room);
+      room.lastRoundOver = { type: 'roundOver', round: room.round, rounds: room.rounds, final: true, winnerId: null, earnings: {} };
+    }
     broadcast(room, roomInfo(room));
-    room.lastRoundOver = { type: 'roundOver', round: room.round, rounds: room.rounds, final: true, winnerId: null, earnings: {} };
-    broadcast(room, room.lastRoundOver);
+    if (room.state === 'over') broadcast(room, room.lastRoundOver);
     return;
   }
   broadcast(room, roomInfo(room));
   if (room.state === 'shop' && shopDone(room)) return startRound(room);
+  if (room.state === 'over') return maybeRematch(room);
   if (room.state === 'playing') {
     const g = room.game;
     const alive = g.tanks.filter((t) => t.alive);
@@ -416,90 +622,263 @@ function leaveRoom(player) {
   }
 }
 
+// ---------- surviving restarts ----------
+// On SIGTERM (Render deploys/restarts) every room is written to the store; the next
+// server restores a room when its players reconnect. Timers are paused meanwhile.
+function snapshot(room) {
+  const g = room.game;
+  return {
+    v: SNAPSHOT_VERSION,
+    savedAt: new Date().toISOString(),
+    code: room.code,
+    hostId: room.hostId,
+    state: room.state,
+    rounds: room.rounds,
+    round: room.round,
+    lastRoundOver: room.lastRoundOver || null,
+    left: {
+      turn: g ? remaining(g.deadline) : 0,
+      shop: remaining(room.shopDeadline),
+      countdown: remaining(room.countdownDeadline),
+    },
+    players: room.players.map((p) => ({
+      id: p.id, tokenHash: p.token ? hashToken(p.token) : p.tokenHash, isBot: p.isBot, difficulty: p.difficulty,
+      name: p.name, color: p.color, inv: p.inv, money: p.money, score: p.score, ready: p.ready, vote: p.vote,
+      stats: p.stats, match: p.match,
+    })),
+    game: g && {
+      terrain: g.terrain,
+      tanks: g.tanks.map(({ inv, ammo, ...t }) => t), // inventory is linked back from the players
+      turnIdx: g.turnIdx,
+      wind: g.wind,
+      currentId: g.currentId,
+      phase: g.phase,
+    },
+  };
+}
+
+function restore(snap) {
+  if (snap.v !== SNAPSHOT_VERSION || rooms.has(snap.code)) return rooms.get(snap.code) || null;
+  const room = { code: snap.code, hostId: snap.hostId, state: snap.state, rounds: snap.rounds, round: snap.round, players: [], game: null, lastRoundOver: snap.lastRoundOver };
+  for (const s of snap.players) {
+    const p = newPlayer({ ...s, token: null, room, connected: s.isBot, ws: null });
+    if (!p.isBot) p.graceTimer = setTimeout(() => leaveRoom(p), RECONNECT_GRACE_MS + RESUME_EXTRA_MS);
+    room.players.push(p);
+  }
+  if (snap.game) {
+    const g = { ...snap.game, timer: null };
+    g.tanks = g.tanks.map((t) => {
+      const owner = room.players.find((p) => p.id === t.id);
+      const inv = owner ? owner.inv : P.newInventory();
+      return { ...t, inv, ammo: inv.ammo };
+    });
+    room.game = g;
+  }
+  rooms.set(room.code, room);
+
+  const extra = RESUME_EXTRA_MS;
+  if (room.state === 'countdown') startCountdown(room, snap.left.countdown + extra);
+  else if (room.state === 'shop') openShopRestored(room, snap.left.shop + extra);
+  else if (room.state === 'playing') {
+    const g = room.game;
+    if (g.phase === 'aim') {
+      const owner = playerById(room, g.currentId);
+      if (owner && owner.isBot) setTimeout(() => scheduleBotTurn(room, owner), extra);
+      else setTurnTimer(room, snap.left.turn + extra);
+    } else setTurnTimer(room, extra); // a shot was playing out: continue with the next turn
+  }
+  handOverHostLater(room);
+  return room;
+}
+
+function openShopRestored(room, ms) {
+  room.shopDeadline = Date.now() + ms;
+  clearTimeout(room.shopTimer);
+  room.shopTimer = setTimeout(() => startRound(room), ms);
+}
+
+const restoring = new Map();
+const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// On a deploy the new server may be up before the old one has written its backup,
+// so "resume" keeps looking for up to waitMs.
+function restoreRoom(code, waitMs) {
+  code = String(code || '').trim().toUpperCase();
+  if (!/^[A-Z]{4}$/.test(code)) return Promise.resolve(null);
+  if (rooms.has(code)) return Promise.resolve(rooms.get(code));
+  if (restoring.has(code)) return restoring.get(code);
+  const attempt = (async () => {
+    const until = Date.now() + waitMs;
+    for (;;) {
+      let snap = null;
+      try {
+        snap = await store.loadRoom(code);
+      } catch (err) {
+        console.error('Raumsicherung nicht lesbar:', err.message);
+      }
+      if (snap && Date.now() - Date.parse(snap.savedAt) <= SNAPSHOT_MAX_AGE_MS) {
+        const room = restore(snap);
+        if (room) {
+          console.log(`Raum ${code} nach Neustart wiederhergestellt (${room.state})`);
+          store.deleteRoom(code).catch((err) => console.error('Raumsicherung nicht gelöscht:', err.message));
+        }
+        return room;
+      }
+      if (Date.now() + 1000 > until) return null;
+      await delay(1000);
+    }
+  })().finally(() => restoring.delete(code));
+  restoring.set(code, attempt);
+  return attempt;
+}
+
+// remove backups nobody picked up
+(async () => {
+  if (!store.persistent) return;
+  try {
+    for (const code of await store.listRooms()) {
+      const snap = await store.loadRoom(code);
+      if (snap && Date.now() - Date.parse(snap.savedAt) > SNAPSHOT_MAX_AGE_MS) await store.deleteRoom(code);
+    }
+  } catch (err) {
+    console.error('Aufräumen der Raumsicherungen fehlgeschlagen:', err.message);
+  }
+})();
+
+async function shutdown() {
+  const active = [...rooms.values()].filter((r) => humans(r).length);
+  let saved = 0;
+  if (store.persistent && active.length) {
+    const saves = active.map((r) =>
+      store
+        .saveRoom(r.code, snapshot(r))
+        .then(() => saved++)
+        .catch((err) => console.error(`Raum ${r.code} nicht gesichert:`, err.message))
+    );
+    await Promise.race([Promise.all(saves), delay(SHUTDOWN_SAVE_TIMEOUT_MS)]);
+    console.log(`${saved} von ${active.length} Räumen vor dem Neustart gesichert`);
+  }
+  for (const ws of wss.clients) {
+    send(
+      ws,
+      saved > 0
+        ? { type: 'info', message: 'Der Server wird aktualisiert – ihr werdet gleich automatisch wieder verbunden.' }
+        : { type: 'info', message: 'Der Server wird neu gestartet – laufende Spiele gehen verloren.' }
+    );
+    ws.close(1012, 'restart');
+  }
+}
+
 // ---------- websocket ----------
 const wss = new WebSocketServer({ server, maxPayload: 4096 });
 
 wss.on('connection', (ws) => {
   // `player` is swapped for the stored one when this connection resumes a seat
-  let player = {
-    id: crypto.randomUUID(), token: crypto.randomBytes(18).toString('base64url'), ws, connected: true,
-    name: 'Panzer', color: null, room: null, graceTimer: null,
-    inv: P.newInventory(), money: 0, score: 0, ready: false, stats: { damage: 0, kills: 0 }, lastMove: 0,
-  };
+  let player = newPlayer({ ws });
   ws.isAlive = true;
+  ws.budget = { count: 0, since: Date.now() };
   ws.on('pong', () => (ws.isAlive = true));
 
   const myTurn = (room) =>
     room && room.state === 'playing' && room.game.currentId === player.id && room.game.phase === 'aim';
+  const isHost = (room) => room && room.hostId === player.id;
 
-  ws.on('message', (raw) => {
-    let msg;
-    try {
-      msg = JSON.parse(raw);
-    } catch {
-      return;
-    }
+  function joinRoom(r, name) {
+    player.name = cleanName(name);
+    player.color = freeColor(r);
+    player.room = r;
+    player.money = 0;
+    player.score = 0;
+    r.players.push(player);
+    send(ws, { type: 'joined', you: player.id, code: r.code, token: player.token });
+    broadcast(r, roomInfo(r));
+  }
+
+  async function handle(msg) {
     const room = player.room;
-
     switch (msg.type) {
       case 'create': {
         if (room) leaveRoom(player);
+        player = newPlayer({ ws });
         const r = { code: newCode(), players: [], hostId: player.id, state: 'lobby', rounds: 5, round: 0, game: null };
         rooms.set(r.code, r);
-        player.name = cleanName(msg.name);
-        player.color = freeColor(r);
-        player.room = r;
-        r.players.push(player);
-        send(ws, { type: 'joined', you: player.id, code: r.code, token: player.token });
-        broadcast(r, roomInfo(r));
+        joinRoom(r, msg.name);
+        if (msg.solo) {
+          addBot(r, 'medium');
+          broadcast(r, roomInfo(r));
+        }
         break;
       }
       case 'join': {
-        const r = rooms.get(String(msg.code || '').toUpperCase().trim());
+        const r = rooms.get(String(msg.code || '').toUpperCase().trim()) || (await restoreRoom(msg.code, 0));
         if (!r) return send(ws, { type: 'error', msg: 'Raum nicht gefunden.' });
-        if (r.state === 'playing' || r.state === 'shop')
+        if (r.state !== 'lobby' && r.state !== 'over')
           return send(ws, { type: 'error', msg: 'In diesem Raum läuft gerade ein Match.' });
         if (r.players.length >= P.MAX_PLAYERS) return send(ws, { type: 'error', msg: 'Der Raum ist voll.' });
         if (room) leaveRoom(player);
-        player.name = cleanName(msg.name);
-        player.color = freeColor(r);
-        player.room = r;
-        player.money = 0;
-        player.score = 0;
-        r.players.push(player);
-        send(ws, { type: 'joined', you: player.id, code: r.code, token: player.token });
+        player = newPlayer({ ws });
+        joinRoom(r, msg.name);
+        break;
+      }
+      case 'resume': {
+        const r = await restoreRoom(msg.code, store.persistent ? RESTORE_WAIT_MS : 0);
+        const hash = hashToken(msg.token);
+        const p = r && r.players.find((pp) => !pp.isBot && (pp.token ? pp.token === msg.token : pp.tokenHash === hash));
+        if (!p) return send(ws, { type: 'resumeFailed' });
+        if (p === player) return sendSync(r, p);
+        if (player.room) leaveRoom(player);
+        clearTimeout(p.graceTimer);
+        const old = p.ws;
+        p.ws = ws;
+        p.token = msg.token;
+        p.connected = true;
+        player = p;
+        // the same seat open in another tab: that tab gets closed
+        if (old && old !== ws && old.readyState === old.OPEN) old.close(4000, 'resumed elsewhere');
+        send(ws, { type: 'joined', you: p.id, code: r.code, token: p.token, resumed: true });
         broadcast(r, roomInfo(r));
+        sendSync(r, p);
+        if (r.state === 'over') maybeRematch(r);
         break;
       }
       case 'settings': {
-        if (!room || room.hostId !== player.id || (room.state !== 'lobby' && room.state !== 'over')) return;
+        if (!isHost(room) || (room.state !== 'lobby' && room.state !== 'over')) return;
         if (P.ROUND_OPTIONS.includes(Number(msg.rounds))) room.rounds = Number(msg.rounds);
         broadcast(room, roomInfo(room));
         break;
       }
-      case 'start': {
-        if (!room || room.hostId !== player.id || (room.state !== 'lobby' && room.state !== 'over')) return;
-        if (room.players.length < 2) return send(ws, { type: 'error', msg: 'Mindestens 2 Spieler nötig.' });
-        startMatch(room);
-        break;
-      }
-      case 'lobby': {
-        if (!room || room.hostId !== player.id || room.state !== 'over') return;
-        room.state = 'lobby';
+      case 'addBot': {
+        if (!isHost(room) || (room.state !== 'lobby' && room.state !== 'over')) return;
+        addBot(room, msg.difficulty);
         broadcast(room, roomInfo(room));
         break;
       }
-      case 'aim': {
-        if (!myTurn(room)) return;
-        const t = room.game.tanks[room.game.turnIdx];
-        const angle = Number(msg.angle);
-        const power = Number(msg.power);
-        if (Number.isFinite(angle)) t.angle = Math.max(0, Math.min(180, Math.round(angle)));
-        if (Number.isFinite(power)) t.power = Math.max(10, Math.min(t.maxPower, Math.round(power)));
-        if (P.WEAPON_ORDER.includes(msg.weapon) && t.ammo[msg.weapon] !== 0) t.weapon = msg.weapon;
-        broadcast(room, { type: 'aim', id: t.id, angle: t.angle, power: t.power, weapon: t.weapon });
+      case 'kick':
+        if (isHost(room)) kick(room, player, msg.playerId);
+        break;
+      case 'start': {
+        if (!isHost(room) || (room.state !== 'lobby' && room.state !== 'over')) return;
+        if (room.players.length < 2) return send(ws, { type: 'error', msg: 'Mindestens 2 Spieler nötig.' });
+        startCountdown(room);
         break;
       }
+      case 'vote': {
+        if (!room || room.state !== 'over') return;
+        player.vote = !!msg.vote;
+        broadcast(room, roomInfo(room));
+        maybeRematch(room);
+        break;
+      }
+      case 'lobby': {
+        if (!isHost(room) || room.state !== 'over') return;
+        room.state = 'lobby';
+        for (const p of room.players) p.vote = p.isBot;
+        broadcast(room, roomInfo(room));
+        break;
+      }
+      case 'aim':
+        if (myTurn(room)) setAim(room, room.game.tanks[room.game.turnIdx], msg);
+        break;
       case 'fire':
         if (myTurn(room)) fire(room, room.game.tanks[room.game.turnIdx]);
         break;
@@ -515,7 +894,7 @@ wss.on('connection', (ws) => {
         break;
       }
       case 'buy':
-        if (room && room.state === 'shop') buy(room, player, msg);
+        if (room && room.state === 'shop' && !player.ready && buy(room, player, msg)) broadcast(room, roomInfo(room));
         break;
       case 'ready':
         if (!room || room.state !== 'shop') return;
@@ -523,32 +902,30 @@ wss.on('connection', (ws) => {
         if (shopDone(room)) startRound(room);
         else broadcast(room, roomInfo(room));
         break;
-      case 'resume': {
-        const r = rooms.get(String(msg.code || '').toUpperCase().trim());
-        const p = r && r.players.find((pp) => pp.token === msg.token);
-        if (!p) return send(ws, { type: 'resumeFailed' });
-        if (p === player) return sendSync(r, p);
-        if (player.room) leaveRoom(player);
-        clearTimeout(p.graceTimer);
-        const old = p.ws;
-        p.ws = ws;
-        p.connected = true;
-        player = p;
-        // the same seat open in another tab: that tab gets closed
-        if (old !== ws && old.readyState === old.OPEN) old.close(4000, 'resumed elsewhere');
-        send(ws, { type: 'joined', you: p.id, code: r.code, token: p.token, resumed: true });
-        broadcast(r, roomInfo(r));
-        sendSync(r, p);
-        break;
-      }
       case 'ping':
         send(ws, { type: 'pong' });
         break;
       case 'leave':
         leaveRoom(player);
+        player = newPlayer({ ws });
         send(ws, { type: 'left' });
         break;
     }
+  }
+
+  ws.on('message', (raw) => {
+    // simple flood guard: at most 40 messages per second
+    const now = Date.now();
+    if (now - ws.budget.since > 1000) ws.budget = { count: 0, since: now };
+    if (++ws.budget.count > 40) return;
+    let msg;
+    try {
+      msg = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    // one message after another per connection ("resume" may wait for a backup)
+    ws.queue = (ws.queue || Promise.resolve()).then(() => handle(msg || {})).catch((err) => console.error(err));
   });
 
   ws.on('close', () => {
@@ -569,3 +946,13 @@ setInterval(() => {
 }, 25000);
 
 server.listen(PORT, () => console.log(`Krater-Kommando läuft auf http://localhost:${PORT}`));
+
+// Render sends SIGTERM on deploys/restarts: back up rooms, tell the players, exit.
+let stopping = false;
+process.on('SIGTERM', async () => {
+  if (stopping) return;
+  stopping = true;
+  setTimeout(() => process.exit(0), SHUTDOWN_SAVE_TIMEOUT_MS + 3000).unref();
+  await shutdown();
+  server.close(() => process.exit(0));
+});

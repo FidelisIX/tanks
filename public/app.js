@@ -23,6 +23,7 @@
   let shopDeadline = 0;
   let driveTimer = null;
   let shakeUntil = 0;
+  let countdownEnd = 0;
   let lastMsgAt = 0;
   let reconnectUntil = 0;
   let reconnectTimer = null;
@@ -107,7 +108,8 @@
     }
     phase = 'idle';
     updateControls();
-    reconnectUntil = performance.now() + 60000;
+    // 1012 = server restart (deploy): give the new server more time to come up
+    reconnectUntil = performance.now() + (code === 1012 ? 120000 : 60000);
     resume(session);
   }
 
@@ -156,6 +158,16 @@
         saveSession(msg.code, msg.token);
         history.replaceState(null, '', `?room=${msg.code}`);
         if (msg.resumed) banner('');
+        break;
+      case 'kicked':
+        clearSession();
+        room = null;
+        overlayVisible = false;
+        showError(msg.message);
+        show('menu');
+        break;
+      case 'info':
+        banner(msg.message);
         break;
       case 'resumeFailed':
         clearSession();
@@ -250,15 +262,23 @@
       overlayVisible = false;
       show('game');
     }
-    if (room.state === 'shop' || room.state === 'over') show('game');
+    if (room.state === 'shop' || room.state === 'over' || room.state === 'countdown') show('game');
+    if (room.state === 'countdown') {
+      countdownEnd = performance.now() + room.countdownLeft;
+      overlayVisible = true;
+    }
     $('room-code').textContent = room.code;
     $('player-list').innerHTML = room.players
       .map(
-        (p) => `<li><span class="dot" style="background:${p.color}"></span>${esc(p.name)}${
+        (p) => `<li><span class="dot" style="background:${p.color}"></span>${p.isBot ? '🤖 ' : ''}${esc(p.name)}${
           p.id === myId ? ' (du)' : p.connected ? '' : ' <span class="offline">(getrennt)</span>'
-        }<span class="badge">${p.id === room.hostId ? 'Gastgeber' : ''}</span></li>`
+        }<span class="badge">${p.id === room.hostId ? 'Gastgeber' : p.isBot ? `Computer · ${LEVELS[p.difficulty] || ''}` : ''}</span>${
+          isHost && p.id !== myId ? `<button class="kick" data-kick="${p.id}" title="Aus dem Raum entfernen">✕</button>` : ''
+        }</li>`
       )
       .join('');
+    $('bot-row').classList.toggle('hidden', !isHost);
+    $('btn-bot').disabled = room.players.length >= P.MAX_PLAYERS;
     $('rounds').value = String(room.rounds);
     $('rounds').disabled = !isHost;
     $('btn-start').classList.toggle('hidden', !isHost);
@@ -271,6 +291,8 @@
     renderOverlay();
   }
 
+  const LEVELS = { easy: 'Leicht', medium: 'Mittel', hard: 'Schwer' };
+
   function isOffline(id) {
     const p = room && room.players.find((pp) => pp.id === id);
     return !!p && p.connected === false;
@@ -282,9 +304,16 @@
 
   // Round summary + shop (between rounds) or final standings (after the last round).
   function renderOverlay() {
-    const show = overlayVisible && room && (room.state === 'shop' || room.state === 'over') && lastRound;
+    const countdown = overlayVisible && room && room.state === 'countdown';
+    const show = countdown || (overlayVisible && room && (room.state === 'shop' || room.state === 'over') && lastRound);
     $('overlay').classList.toggle('hidden', !show);
     if (!show) return;
+    if (countdown) {
+      $('overlay-card').innerHTML = `<p class="hint">Gleich geht's los – ${room.rounds} Runden</p>
+        <div class="countdown" id="countdown-num"></div>
+        <p class="hint">${room.players.map((p) => `<span style="color:${p.color}">${esc(p.name)}</span>`).join(' · ')}</p>`;
+      return;
+    }
     const isHost = room.hostId === myId;
     const players = room.players;
     const name = (id) => {
@@ -339,10 +368,19 @@
         .sort((a, b) => b.score - a.score)
         .map((p, i) => `<li><b>${i + 1}.</b><span class="dot" style="background:${p.color}"></span>${esc(p.name)}<span class="badge">${p.score} Punkte</span></li>`)
         .join('')}</ul>`;
+      const mine = me();
+      html += `<div class="votes">${players
+        .filter((p) => !p.isBot)
+        .map((p) => `<span class="${p.vote ? 'ok' : ''}">${p.vote ? '✓' : '…'} ${esc(p.name)}</span>`)
+        .join('')}</div>`;
+      html += `<button data-action="vote" class="primary" ${players.length < 2 ? 'disabled' : ''}>${
+        mine && mine.vote ? 'Doch nicht' : `Nochmal spielen (${room.rounds} Runden)`
+      }</button>`;
       if (isHost) {
-        html += `<button data-action="again" class="primary" ${players.length < 2 ? 'disabled' : ''}>Neues Match (${room.rounds} Runden)</button>`;
-        html += `<button data-action="lobby">Rundenzahl ändern</button>`;
-      } else html += `<p class="hint">Der Gastgeber kann ein neues Match starten.</p>`;
+        html += `<button data-action="again" ${players.length < 2 ? 'disabled' : ''}>Sofort starten (ohne alle Stimmen)</button>`;
+        html += `<button data-action="lobby">Zurück in den Warteraum</button>`;
+      } else html += `<p class="hint">Haben alle zugestimmt, startet das nächste Match. Der Gastgeber kann auch sofort starten.</p>`;
+      html += `<a href="statistik.html" target="_blank" class="stats-link">Statistik &amp; Rekorde</a>`;
     }
     html += `<button data-action="menu" class="link">Zum Hauptmenü</button>`;
     $('overlay-card').innerHTML = html;
@@ -585,6 +623,8 @@
       $('timer-label').textContent = `⏱ ${s}s`;
       $('timer-label').style.color = s <= 10 ? '#e8553b' : '';
     } else $('timer-label').textContent = '';
+    const cd = $('countdown-num');
+    if (cd) cd.textContent = Math.max(1, Math.ceil((countdownEnd - now) / 1000));
     const st = $('shop-timer');
     if (st) st.textContent = `⏱ ${Math.max(0, Math.ceil((shopDeadline - now) / 1000))}s`;
 
@@ -870,6 +910,17 @@
     if (!ws || ws.readyState !== WebSocket.OPEN) await connect();
   }
 
+  $('btn-solo').onclick = async () => {
+    localStorageSet('name', $('name').value);
+    showError('');
+    await ensureConnected();
+    send({ type: 'create', name: $('name').value, solo: true });
+  };
+  $('btn-bot').onclick = () => send({ type: 'addBot', difficulty: $('bot-level').value });
+  $('player-list').onclick = (e) => {
+    const b = e.target.closest('button[data-kick]');
+    if (b) send({ type: 'kick', playerId: b.dataset.kick });
+  };
   $('btn-create').onclick = async () => {
     localStorageSet('name', $('name').value);
     showError('');
@@ -894,6 +945,7 @@
     else if (b.dataset.upgrade) send({ type: 'buy', upgrade: b.dataset.upgrade });
     else if (b.dataset.action === 'ready') send({ type: 'ready', ready: !me().ready });
     else if (b.dataset.action === 'again') send({ type: 'start' });
+    else if (b.dataset.action === 'vote') send({ type: 'vote', vote: !me().vote });
     else if (b.dataset.action === 'lobby') send({ type: 'lobby' });
     else if (b.dataset.action === 'menu') {
       clearSession();

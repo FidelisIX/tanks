@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Statistik – Krater-Kommando</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="stats-page">
+    <header>
+      <h1>Statistik &amp; Rekorde</h1>
+      <p class="tag"><a href="/" class="stats-link">← zurück zum Spiel</a></p>
+    </header>
+    <div class="filter">
+      <label class="inline">Matches
+        <select id="mode">
+          <option value="all">alle</option>
+          <option value="friends">nur gegen Freunde (mind. 2 Menschen)</option>
+          <option value="bots">mit Computergegnern</option>
+        </select>
+      </label>
+    </div>
+    <p id="storage" class="hint"></p>
+    <section id="records" class="records"></section>
+    <h2>Spieler</h2>
+    <div class="table-wrap"><table id="players" class="earn"></table></div>
+  </main>
+  <script src="statistik.js"></script>
+</body>
+</html>

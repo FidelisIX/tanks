@@ -25,7 +25,10 @@
         <input id="code" maxlength="4" placeholder="CODE" autocomplete="off" />
         <button id="btn-join">Beitreten</button>
       </div>
+      <div class="or">oder</div>
+      <button id="btn-solo">Alleine gegen den Computer spielen</button>
       <p id="menu-error" class="error"></p>
+      <a href="statistik.html" class="stats-link">Statistik &amp; Rekorde ansehen</a>
     </section>
 
     <!-- Waiting room -->
@@ -34,6 +37,14 @@
       <div id="room-code" class="code"></div>
       <button id="btn-copy">Einladungslink kopieren</button>
       <ul id="player-list"></ul>
+      <div id="bot-row" class="row">
+        <select id="bot-level">
+          <option value="easy">Leicht</option>
+          <option value="medium" selected>Mittel</option>
+          <option value="hard">Schwer</option>
+        </select>
+        <button id="btn-bot">+ Computergegner</button>
+      </div>
       <label class="inline">Runden pro Match
         <select id="rounds">
           <option value="3">3</option>
