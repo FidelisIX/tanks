@@ -42,9 +42,10 @@
     ball: { name: 'Ball', radius: 30, damage: 40, ammo: 3, drag: 1.1, roll: true },
     drill: { name: 'Bohrer', radius: 32, damage: 45, ammo: 0, drag: 0.8, drill: 90 },
     cluster: { name: 'Splitterbombe', radius: 20, damage: 20, ammo: 0, drag: 1, cluster: { count: 5, spread: 1.1 } },
+    nuke: { name: 'Atombombe', radius: 115, damage: 95, ammo: 0, drag: 0.5 },
     bomblet: { name: 'Splitter', radius: 18, damage: 18, ammo: 0, drag: 1.3 }, // spawned by cluster only
   };
-  const WEAPON_ORDER = ['shell', 'heavy', 'triple', 'dirt', 'ball', 'drill', 'cluster'];
+  const WEAPON_ORDER = ['shell', 'heavy', 'triple', 'dirt', 'ball', 'drill', 'cluster', 'nuke'];
 
   // Shop between rounds. Items add to the inventory, upgrades are permanent for the match.
   const SHOP_ITEMS = {
@@ -54,6 +55,7 @@
     ball: { name: 'Ball', price: 35, qty: 1 },
     drill: { name: 'Bohrer', price: 50, qty: 1, desc: 'gräbt sich nach dem Aufprall durch die Erde' },
     cluster: { name: 'Splitterbombe', price: 60, qty: 1, desc: 'zerfällt am höchsten Punkt in 5 Splitter' },
+    nuke: { name: 'Atombombe', price: 280, qty: 1, desc: 'riesiger Krater, fast tödlich im ganzen Umkreis' },
     shield: { name: 'Schild', price: 60, qty: 1, desc: 'Energieblase, kostet beim Einsatz den Zug' },
     fuel: { name: 'Treibstoff', price: 20, qty: 60, desc: 'zum Fahren (A/D)' },
   };

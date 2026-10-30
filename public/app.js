@@ -22,6 +22,7 @@
   let overlayVisible = false;
   let shopDeadline = 0;
   let driveTimer = null;
+  let shakeUntil = 0;
 
   const canvas = $('canvas');
   const ctx = canvas.getContext('2d');
@@ -267,7 +268,7 @@
     $('weapons').innerHTML = P.WEAPON_ORDER.map((k, i) => {
       const w = P.WEAPONS[k];
       const ammo = t ? t.ammo[k] : w.ammo;
-      if (ammo === 0 && (k === 'drill' || k === 'cluster')) return ''; // shop-only weapons appear once bought
+      if (ammo === 0 && w.ammo === 0) return ''; // shop-only weapons appear once bought
       const label = ammo === -1 ? '∞' : `×${ammo}`;
       return `<button data-w="${k}" class="${t && t.weapon === k ? 'active' : ''}" ${
         !mine || ammo === 0 ? 'disabled' : ''
@@ -345,9 +346,11 @@
       if (s.explosion && !anim.applied[i] && anim.tick >= s.explosion.tick) {
         anim.applied[i] = true;
         P.applyCrater(terrain, s.explosion);
-        effects.push({ x: s.explosion.x, y: s.explosion.y, r: s.explosion.r, dirt: s.explosion.dirt, age: 0 });
+        const nuke = s.w === 'nuke';
+        effects.push({ x: s.explosion.x, y: s.explosion.y, r: s.explosion.r, dirt: s.explosion.dirt, nuke, age: 0 });
+        if (nuke) shakeUntil = performance.now() + 900;
         spawnDebris(s.explosion);
-        sound(s.explosion.dirt ? 'thud' : 'boom', s.explosion.r);
+        sound(s.explosion.dirt ? 'thud' : 'boom', nuke ? 250 : s.explosion.r);
       }
     });
     if (anim.tick >= anim.endTick) finishAnim();
@@ -424,6 +427,11 @@
 
   function draw(now) {
     stepAnim();
+    ctx.save();
+    if (now < shakeUntil) {
+      const k = (shakeUntil - now) / 900;
+      ctx.translate((Math.random() - 0.5) * 16 * k, (Math.random() - 0.5) * 16 * k);
+    }
 
     const sky = ctx.createLinearGradient(0, 0, 0, P.H);
     sky.addColorStop(0, '#0d1530');
@@ -444,6 +452,7 @@
     drawEffects();
     drawFloaters();
     drawWindSock();
+    ctx.restore();
 
     if (phase === 'aim' && deadline) {
       const s = Math.max(0, Math.ceil((deadline - now) / 1000));
@@ -591,10 +600,12 @@
   }
 
   function drawEffects() {
-    effects = effects.filter((e) => e.age < (e.debris ? 60 : 30));
+    effects = effects.filter((e) => e.age < (e.nuke ? 150 : e.debris ? 60 : 30));
     for (const e of effects) {
       e.age++;
-      if (e.shieldPulse) {
+      if (e.nuke) {
+        drawNuke(e);
+      } else if (e.shieldPulse) {
         ctx.strokeStyle = `rgba(127,216,255,${1 - e.age / 30})`;
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -621,6 +632,51 @@
       }
       ctx.globalAlpha = 1;
     }
+  }
+
+  // White flash, fireball, then a mushroom cloud that rises and fades.
+  function drawNuke(e) {
+    const t = e.age;
+    if (t < 25) {
+      ctx.fillStyle = `rgba(255,250,230,${0.85 * (1 - t / 25)})`;
+      ctx.fillRect(-20, -20, P.W + 40, P.H + 40);
+    }
+    const fade = Math.max(0, 1 - Math.max(0, t - 60) / 90);
+    // fireball
+    const fr = e.r * Math.min(1.1, 0.3 + t / 20);
+    const g = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, fr);
+    g.addColorStop(0, `rgba(255,255,220,${fade})`);
+    g.addColorStop(0.35, `rgba(255,190,80,${0.9 * fade})`);
+    g.addColorStop(1, 'rgba(200,50,10,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, fr, 0, Math.PI * 2);
+    ctx.fill();
+    if (t < 15) return;
+    // mushroom: stem + cap
+    const rise = Math.min(1, (t - 15) / 70);
+    const capY = e.y - 40 - rise * 170;
+    const capR = 35 + rise * 45;
+    ctx.globalAlpha = 0.85 * fade;
+    const sg = ctx.createLinearGradient(0, capY, 0, e.y);
+    sg.addColorStop(0, '#b0502a');
+    sg.addColorStop(1, '#5a3a2a');
+    ctx.fillStyle = sg;
+    ctx.beginPath();
+    ctx.moveTo(e.x - 14 - rise * 6, e.y);
+    ctx.quadraticCurveTo(e.x - 8, (capY + e.y) / 2, e.x - 10, capY + capR * 0.4);
+    ctx.lineTo(e.x + 10, capY + capR * 0.4);
+    ctx.quadraticCurveTo(e.x + 8, (capY + e.y) / 2, e.x + 14 + rise * 6, e.y);
+    ctx.fill();
+    const cg = ctx.createRadialGradient(e.x, capY - capR * 0.2, 4, e.x, capY, capR * 1.2);
+    cg.addColorStop(0, '#ffd27a');
+    cg.addColorStop(0.4, '#d9682e');
+    cg.addColorStop(1, 'rgba(70,40,35,0.9)');
+    ctx.fillStyle = cg;
+    ctx.beginPath();
+    ctx.ellipse(e.x, capY, capR * 1.3, capR * 0.75, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
   }
 
   function drawFloaters() {

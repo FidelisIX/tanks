@@ -11,7 +11,7 @@ Wer am Ende die meisten Gesamtpunkte hat, gewinnt.
 2. Den **Einladungslink** (oder den 4-stelligen Code) an Freunde schicken.
 3. Der Gastgeber wählt die Rundenzahl und startet das Match.
 
-**Steuerung:** ←/→ Winkel · ↑/↓ Kraft · 1–7 Waffe · S Schild · A/D fahren · Leertaste Feuer (Shift für feine Schritte).
+**Steuerung:** ←/→ Winkel · ↑/↓ Kraft · 1–8 Waffe · S Schild · A/D fahren · Leertaste Feuer (Shift für feine Schritte).
 Auf dem Handy über Schieberegler und Buttons.
 
 | Waffe | Wirkung | Munition |
@@ -23,6 +23,7 @@ Auf dem Handy über Schieberegler und Buttons.
 | Ball | rollt nach dem Aufprall den Hang hinunter, prallt an steilen Wänden ab und explodiert, wenn er liegen bleibt oder einen Panzer berührt | 3 |
 | Bohrer | gräbt sich nach dem Aufprall bis zu 90 px durch die Erde und explodiert dann | nur im Shop |
 | Splitterbombe | zerfällt am höchsten Punkt der Flugbahn in 5 Splitter | nur im Shop |
+| Atombombe | riesiger Krater (Radius 115 px), bis zu 95 Schaden im ganzen Umkreis, kaum vom Wind abgetrieben | nur im Shop (280) |
 
 Die Munitionsangaben gelten für den Start eines Matches. Was übrig bleibt, nimmt man in die nächste Runde mit.
 
@@ -48,7 +49,7 @@ Jeder Zug hat 40 Sekunden.
 Punkte sind gleichzeitig Geld. Für die Rangliste zählt alles, was man insgesamt verdient hat, auch wenn man es ausgibt.
 Nach jeder Runde öffnet sich der Shop für alle gleichzeitig, für 30 Sekunden oder bis alle auf „Fertig“ klicken:
 
-- **Munition:** Schwere Bombe 40, Dreierfächer 35, Erdklumpen 25, Ball 35, Bohrer 50, Splitterbombe 60, Schild 60, Treibstoff +60 für 20
+- **Munition:** Schwere Bombe 40, Dreierfächer 35, Erdklumpen 25, Ball 35, Bohrer 50, Splitterbombe 60, Atombombe 280, Schild 60, Treibstoff +60 für 20
 - **Dauerhafte Upgrades** (gelten für das ganze Match):
   - Panzerung: +15 max. Lebenspunkte, 3 Stufen, 80/120/160
   - Schildverstärker: +30 Schildpunkte, 70/110

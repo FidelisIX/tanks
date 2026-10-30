@@ -277,7 +277,8 @@ function fire(room, tank) {
   }
 
   const end = Math.max(...shells.map((s) => s.startTick + s.path.length));
-  const animMs = (end / P.ANIM_SPEED) * (1000 / 60) + 1600;
+  const nuked = shells.some((s) => s.w === 'nuke' && s.explosion);
+  const animMs = (end / P.ANIM_SPEED) * (1000 / 60) + 1600 + (nuked ? 2200 : 0); // let the mushroom cloud play out
   broadcast(room, {
     type: 'shot',
     shooterId: tank.id,
