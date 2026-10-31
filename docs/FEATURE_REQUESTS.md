@@ -44,4 +44,4 @@ Vorschlag: die bisherigen Wegwerf-Tests (WebSocket-Bots, Playwright) als `npm te
 | F-024 | Doku für Waffen und Upgrades: `docs/WAFFEN.md` und Hilfe im Spiel („?“, Taste H) | `fd8b2e6` |
 | F-025 | Atombomben-Symbol als Fliegerbombe statt Oval | `fd8b2e6` |
 | F-026 | Panzerung verringert den erlittenen Schaden (−10 % pro Stufe) statt Lebenspunkte zu erhöhen – sonst bekäme der Gegner mehr Punkte | `fd69aba` |
-| F-027 | Reihenfolge: erst Schild, dann Panzerung (der Schild ist die äußere Blase; die Panzerung verringert nur, was durchkommt) | dieser Commit |
+| F-027 | Reihenfolge: erst Schild, dann Panzerung (der Schild ist die äußere Blase; die Panzerung verringert nur, was durchkommt) | `b89e432` |
