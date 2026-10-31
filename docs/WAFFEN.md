@@ -47,7 +47,7 @@ Upgrades gelten für das ganze Match und werden zwischen den Runden im Shop geka
 
 | Upgrade | Wirkung pro Stufe | Stufen | Preise |
 |---|---|---|---|
-| Panzerung | −10 % Explosionsschaden (höchstens −30 %; wirkt vor dem Schild, nicht bei Fallschaden) | 3 | 80 / 120 / 160 |
+| Panzerung | −10 % Explosionsschaden (höchstens −30 %; wirkt erst auf den Schaden, der durch den Schild kommt; nicht bei Fallschaden) | 3 | 80 / 120 / 160 |
 | Schildverstärker | +30 Schildpunkte | 2 | 70 / 110 |
 | Stoßdämpfer | −50 % Fallschaden | 2 | 60 / 90 |
 | Turbo-Kanone | +10 max. Kraft | 2 | 70 / 110 |

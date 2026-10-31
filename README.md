@@ -61,7 +61,8 @@ Nach jeder Runde öffnet sich der Shop für alle gleichzeitig, für 30 Sekunden 
 
 - **Munition:** Schwere Bombe 40, Dreierfächer 35, Erdklumpen 25, Ball 35, Bohrer 50, Splitterbombe 60, Atombombe 280, Schild 60, Treibstoff +60 für 20
 - **Dauerhafte Upgrades** (gelten für das ganze Match):
-  - Panzerung: −10 % Explosionsschaden pro Stufe (höchstens −30 %), 3 Stufen, 80/120/160. Alle Panzer haben immer 100 Lebenspunkte;
+  - Panzerung: −10 % Explosionsschaden pro Stufe (höchstens −30 %), 3 Stufen, 80/120/160. Ein aktiver Schild fängt zuerst ab;
+    die Panzerung verringert nur, was durchkommt. Alle Panzer haben immer 100 Lebenspunkte;
     so bekommt der Gegner für einen gepanzerten Panzer nicht mehr Punkte, sondern weniger.
   - Schildverstärker: +30 Schildpunkte, 70/110
   - Stoßdämpfer: −50 % Fallschaden pro Stufe, 60/90

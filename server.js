@@ -375,11 +375,12 @@ function recordMatch(room) {
 }
 
 // ---------- shooting ----------
-// Explosion damage hits the shield first. Returns what was actually taken off
-// (no overkill), so points are only paid for real damage.
+// Explosion damage hits the shield first (it is the outer bubble); armor only reduces what
+// gets through to the tank. Returns what was actually taken off (no overkill), so points
+// are only paid for real damage.
 function damage(tank, dmg) {
   const absorbed = Math.min(tank.shield, dmg);
-  const taken = Math.min(tank.hp, dmg - absorbed);
+  const taken = Math.min(tank.hp, Math.round((dmg - absorbed) * (tank.damageFactor ?? 1)));
   tank.shield -= absorbed;
   tank.hp -= taken;
   return { dmg: taken, absorbed };
@@ -409,8 +410,7 @@ function fire(room, tank) {
   for (const s of shells.filter((s) => s.explosion).sort((a, b) => a.explosion.tick - b.explosion.tick)) {
     for (const t of g.tanks) {
       if (!t.alive) continue;
-      // armor works before the shield
-      const dmg = Math.round(P.explosionDamage(t, s.explosion, P.WEAPONS[s.w]) * (t.damageFactor ?? 1));
+      const dmg = P.explosionDamage(t, s.explosion, P.WEAPONS[s.w]);
       if (dmg <= 0) continue;
       const res = damage(t, dmg);
       credit(t, res.dmg + res.absorbed);
