@@ -9,6 +9,8 @@ const Bot = require('./server/bot');
 const { computeStats } = require('./server/stats');
 
 const PORT = process.env.PORT || 3000;
+// Render requires binding to 0.0.0.0; without a host Node listens on "::" only
+const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -955,7 +957,7 @@ setInterval(() => {
   }
 }, 25000);
 
-server.listen(PORT, () => console.log(`Krater-Kommando läuft auf http://localhost:${PORT}`));
+server.listen(PORT, HOST, () => console.log(`Krater-Kommando läuft auf http://${HOST}:${PORT}`));
 
 // Render sends SIGTERM on deploys/restarts: back up rooms, tell the players, exit.
 let stopping = false;
