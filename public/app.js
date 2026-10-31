@@ -353,13 +353,13 @@
       html += `<div class="shop-head"><b>Shop</b><span>💰 ${m.money}</span><span id="shop-timer"></span></div><div class="shop">`;
       for (const [k, it] of Object.entries(P.SHOP_ITEMS)) {
         html += `<button data-buy="${k}" ${m.money < it.price || m.ready ? 'disabled' : ''} title="${esc(it.desc || '')}">
-          <span>${it.name}${it.qty > 1 ? ` +${it.qty}` : ''}</span><small>hast ${owned(k)}</small><b>${it.price} 💰</b></button>`;
+          ${ICONS[k] || ''}<span>${it.name}${it.qty > 1 ? ` +${it.qty}` : ''}</span><small>hast ${owned(k)}</small><b>${it.price} 💰</b></button>`;
       }
       for (const [k, u] of Object.entries(P.UPGRADES)) {
         const lvl = inv.upgrades[k];
         const price = u.prices[lvl];
         html += `<button data-upgrade="${k}" class="upg" ${price === undefined || m.money < price || m.ready ? 'disabled' : ''}>
-          <span>${u.name} ${'★'.repeat(lvl)}${'☆'.repeat(u.prices.length - lvl)}</span><small>${u.desc}</small><b>${price === undefined ? 'max.' : `${price} 💰`}</b></button>`;
+          ${ICONS[k] || ''}<span>${u.name} ${'★'.repeat(lvl)}${'☆'.repeat(u.prices.length - lvl)}</span><small>${u.desc}</small><b>${price === undefined ? 'max.' : `${price} 💰`}</b></button>`;
       }
       html += `</div><div class="ready-list">${players
         .map((p) => `<span class="${p.ready ? 'ok' : ''}">${p.ready ? '✓' : '…'} ${esc(p.name)}</span>`)
@@ -436,13 +436,17 @@
       const ammo = t ? t.ammo[k] : w.ammo;
       if (ammo === 0 && w.ammo === 0) return ''; // shop-only weapons appear once bought
       const label = ammo === -1 ? '∞' : `×${ammo}`;
-      return `<button data-w="${k}" class="${t && t.weapon === k ? 'active' : ''}" ${
+      return `<button data-w="${k}" class="weapon ${t && t.weapon === k ? 'active' : ''}" ${
         !mine || ammo === 0 ? 'disabled' : ''
-      }>${i + 1}. ${w.name}<small>${label}</small></button>`;
-    }).join('') +
-      `<button id="btn-shield" ${!mine || !t || t.shieldLeft <= 0 ? 'disabled' : ''} title="Kostet den Zug">S. Schild<small>×${
+      } title="${w.name} (Taste ${i + 1})"><span class="key">${i + 1}</span>${ICONS[k] || ''}<small>${label}</small></button>`;
+    }).join('');
+    const weaponNames = `<div class="weapon-name">${t ? `${P.WEAPONS[t.weapon].name} <small>${
+      t.ammo[t.weapon] === -1 ? '∞' : `×${t.ammo[t.weapon]}`
+    }</small>` : ''}</div>`;
+    $('weapons').innerHTML = weaponNames + `<div class="weapon-row">${$('weapons').innerHTML}
+      <button id="btn-shield" class="weapon shield-btn" ${!mine || !t || t.shieldLeft <= 0 ? 'disabled' : ''} title="Schild (Taste S) – kostet den Zug"><span class="key">S</span>${ICONS.shield}<small>×${
         t ? t.shieldLeft : 1
-      }</small></button>`;
+      }</small></button></div>`;
     const cur = tankById(currentId);
     $('turn-label').innerHTML = cur
       ? `<span class="turn-pill${mine ? ' mine' : ''}" style="--c:${cur.color}">${
@@ -459,7 +463,7 @@
     const dir = wind > 0 ? 'nach rechts' : wind < 0 ? 'nach links' : '';
     const label = s === 0 ? 'windstill' : s <= 3 ? 'schwach' : s <= 7 ? 'mittel' : 'stark';
     $('wind-label').innerHTML = `<span class="wind-title">Wind</span>
-      <span class="wind-gauge"><span class="wind-arrow ${wind < 0 ? 'left' : ''}" style="width:${s * 10}%"></span></span>
+      <span class="wind-gauge"><span class="wind-arrow ${wind < 0 ? 'left' : ''}" style="width:calc((50% - 7px) * ${s / 10})"></span></span>
       <b>${s}</b><small>${label}${dir ? ` · ${dir}` : ''}</small>`;
   }
 

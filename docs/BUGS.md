@@ -5,10 +5,11 @@ Status: **offen**, **behoben** (mit Commit) oder **so gewollt**.
 
 ## Offen
 
-### B-004 – Auf dem Handy ist die Spielfläche klein und die Seite scrollt
-Bei 390 × 844 px (Playwright, 2026-10-31) ist der Inhalt 912 px hoch, man muss also für den FEUER!-Knopf scrollen.
-Namen und Lebensbalken auf der Spielfläche sind sehr klein, weil der Canvas (1200 × 650) auf die
-Bildschirmbreite verkleinert wird. Auf dem Laptop (1366 × 768) passt alles.
+### B-004 – Auf dem Handy ist die Schrift auf der Spielfläche sehr klein
+Namen und Lebensbalken auf der Spielfläche sind bei 390 × 844 px sehr klein, weil der Canvas (1200 × 650) auf die
+Bildschirmbreite verkleinert wird. Die Anzeigetafel über der Spielfläche zeigt dieselben Werte lesbar.
+Teilweise behoben: Seit der kompakten Waffenleiste passt die Seite auf dem Handy ohne Scrollen
+(FEUER!-Knopf endet bei 766 von 844 px, Playwright, 2026-10-31); vorher war sie 912 px hoch.
 
 ### B-005 – Abstürze sind von der Raumsicherung nicht abgedeckt
 Räume werden nur beim geordneten Herunterfahren (SIGTERM, z. B. Deploy) gesichert. Stürzt der Prozess ab oder
@@ -32,6 +33,10 @@ Ohne `STATS_GITHUB_TOKEN` nutzt der Server nur den Arbeitsspeicher. Die Statisti
 Einrichtung: siehe README, Abschnitt „Statistik und Neustarts“.
 
 ## Behoben
+
+### B-009 – Windpfeil bei „mittel“ und „stark“ gleich lang
+Die Pfeillänge war Stärke × 10 % der Anzeige, begrenzt auf 50 %. Damit war der Pfeil ab Stärke 5 immer gleich lang.
+Jetzt wächst er bis Stärke 10 gleichmäßig und bleibt innerhalb der Anzeige.
 
 ### B-001 – Feuern mit leer geschossener Waffe tat nichts
 Nach dem letzten Schuss einer Spezialwaffe blieb sie ausgewählt; FEUER! wurde ignoriert, bis der Zug nach
