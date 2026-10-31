@@ -39,6 +39,7 @@ render.yaml          Render-Blueprint
   Entwickelt wird auf eigenen Branches (bisher `claude/gifted-johnson-szzmkh`). Ein Push auf `main` löst einen Deploy aus.
 - Offen: `region` (z. B. `frankfurt`) und `numInstances: 1` sind nicht gesetzt; der Besitzer hat nur den Branch
   entschieden. Ob sich die Region eines bestehenden Render-Dienstes ändern lässt, ist nicht geprüft.
+- Der Server muss auf `0.0.0.0` lauschen (Render-Vorgabe, siehe B-010) und läuft auf Node `22.x` (`engines` in `package.json`).
 - **Dauerhafte Statistik und Raumsicherung** brauchen auf Render die Umgebungsvariable `STATS_GITHUB_TOKEN`
   (Fine-grained Token, nur `FidelisIX/tanks`, „Contents: Read and write“). Daten landen im Branch `statistik`
   (`spiele/JJJJ-MM.jsonl`, `raeume/<CODE>.json`). Der Branch darf nicht der Deploy-Branch sein.

@@ -34,6 +34,15 @@ Einrichtung: siehe README, Abschnitt „Statistik und Neustarts“.
 
 ## Behoben
 
+### B-010 – Deploy auf Render bricht nach 18 Minuten mit „Timed Out“ ab
+Render-Log vom 2026-10-31 (Commit `c9b7754`): Build erfolgreich, Server startet um 17:39:15, Render meldet erst um
+17:57:05 „Timed Out“ und danach „Detected service running on port 10000“.
+Ursachen: (1) `server.listen(PORT)` ohne Adresse – Node lauscht dann auf `::`; Render verlangt laut Doku
+„must bind to a port on host `0.0.0.0`“ (render.com/docs/web-services#port-binding). (2) `"node": ">=18"` wurde zu
+Node 26.13.0 aufgelöst; die Render-Doku rät zu einer Obergrenze (render.com/docs/node-version).
+Lösung wie im Ortsraten-Repo: Bindung an `HOST || '0.0.0.0'`, Node auf `22.x` festgelegt. Behoben in `8c04db2`;
+bestätigt erst, wenn der nächste Deploy auf Render durchläuft.
+
 ### B-009 – Windpfeil bei „mittel“ und „stark“ gleich lang
 Die Pfeillänge war Stärke × 10 % der Anzeige, begrenzt auf 50 %. Damit war der Pfeil ab Stärke 5 immer gleich lang.
 Jetzt wächst er bis Stärke 10 gleichmäßig und bleibt innerhalb der Anzeige. Behoben in `d32e3ef`.
