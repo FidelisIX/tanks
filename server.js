@@ -148,12 +148,21 @@ function roomInfo(room) {
   };
 }
 
-function publicTanks(game) {
+// roundPts: what the player has earned so far this round (damage + kills; win/base come at the end)
+function publicTanks(room) {
+  const game = room.game;
   return game.tanks.map((t) => ({
+    ...scoreOf(room, t.id),
     id: t.id, name: t.name, color: t.color, x: t.x, y: t.y, hp: t.hp, maxHp: t.maxHp, alive: t.alive,
     angle: t.angle, power: t.power, maxPower: t.maxPower, weapon: t.weapon, ammo: t.ammo,
     shield: t.shield, shieldMax: t.shieldMax, shieldLeft: t.inv.shields, fuel: t.inv.fuel,
   }));
+}
+
+function scoreOf(room, id) {
+  const p = playerById(room, id);
+  if (!p) return { score: 0, roundPts: 0, money: 0 };
+  return { score: p.score, money: p.money, roundPts: p.stats.damage * P.REWARDS.perDamage + p.stats.kills * P.REWARDS.kill };
 }
 
 function randomWind() {
@@ -243,7 +252,7 @@ function nextTurn(room) {
     round: room.round,
     rounds: room.rounds,
     terrain: g.terrain,
-    tanks: publicTanks(g),
+    tanks: publicTanks(room),
   });
   if (owner && owner.isBot) scheduleBotTurn(room, owner);
 }
@@ -444,7 +453,7 @@ function fire(room, tank) {
     shells,
     hits,
     terrain: g.terrain,
-    tanks: publicTanks(g),
+    tanks: publicTanks(room),
   });
   setTurnTimer(room, animMs);
 }
@@ -456,7 +465,7 @@ function raiseShield(room, tank) {
   tank.inv.shields--;
   tank.shield = tank.shieldMax;
   g.phase = 'anim';
-  broadcast(room, { type: 'shield', id: tank.id, tanks: publicTanks(g) });
+  broadcast(room, { type: 'shield', id: tank.id, tanks: publicTanks(room) });
   setTurnTimer(room, 1500);
 }
 
@@ -571,7 +580,7 @@ function sendSync(room, player) {
       round: room.round,
       rounds: room.rounds,
       terrain: g.terrain,
-      tanks: publicTanks(g),
+      tanks: publicTanks(room),
     });
   } else if ((room.state === 'shop' || room.state === 'over') && room.lastRoundOver) {
     send(ws, room.lastRoundOver);
@@ -618,7 +627,7 @@ function leaveRoom(player) {
       if (g.phase === 'aim') endRound(room, alive[0] || null);
       // during a shot animation the scheduled nextTurn ends the round
     } else if (g.currentId === player.id && g.phase === 'aim') nextTurn(room);
-    else broadcast(room, { type: 'tanks', tanks: publicTanks(g) });
+    else broadcast(room, { type: 'tanks', tanks: publicTanks(room) });
   }
 }
 

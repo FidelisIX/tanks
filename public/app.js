@@ -204,6 +204,7 @@
         const t = tankById(msg.id);
         if (t) Object.assign(t, { x: msg.x, y: msg.y, fuel: msg.fuel });
         if (msg.id === myId) $('fuel').textContent = `⛽ ${msg.fuel}`;
+        renderScoreboard();
         break;
       }
       case 'aim': {
@@ -244,6 +245,7 @@
   // ---------- screens ----------
   function show(name) {
     for (const s of ['menu', 'room', 'game']) $(`screen-${s}`).classList.toggle('hidden', s !== name);
+    document.body.classList.toggle('in-game', name === 'game');
   }
 
   function showError(text) {
@@ -443,11 +445,42 @@
       }</small></button>`;
     const cur = tankById(currentId);
     $('turn-label').innerHTML = cur
-      ? `<span style="color:${cur.color}">●</span> ${mine ? 'Du bist dran!' : `${esc(cur.name)} ist dran${isOffline(cur.id) ? ' (getrennt)' : ''}`}`
+      ? `<span class="turn-pill${mine ? ' mine' : ''}" style="--c:${cur.color}">${
+          mine ? '🎯 Du bist dran!' : `${esc(cur.name)} ist dran${isOffline(cur.id) ? ' (getrennt)' : ''}`
+        }</span>`
       : '';
-    const arrow = wind === 0 ? '·' : wind > 0 ? '→'.repeat(Math.ceil(Math.abs(wind) / 4)) : '←'.repeat(Math.ceil(Math.abs(wind) / 4));
-    $('wind-label').textContent = `Wind ${arrow} ${Math.abs(wind)}`;
-    $('wind-label').title = 'In der Höhe weht der Wind stärker als am Boden.';
+    renderWind();
+    renderScoreboard();
+  }
+
+  // Wind: arrow length = strength, arrow direction = where the wind blows.
+  function renderWind() {
+    const s = Math.abs(wind);
+    const dir = wind > 0 ? 'nach rechts' : wind < 0 ? 'nach links' : '';
+    const label = s === 0 ? 'windstill' : s <= 3 ? 'schwach' : s <= 7 ? 'mittel' : 'stark';
+    $('wind-label').innerHTML = `<span class="wind-title">Wind</span>
+      <span class="wind-gauge"><span class="wind-arrow ${wind < 0 ? 'left' : ''}" style="width:${s * 10}%"></span></span>
+      <b>${s}</b><small>${label}${dir ? ` · ${dir}` : ''}</small>`;
+  }
+
+  // One card per tank: hit points, shield, points this round, total points, money.
+  function renderScoreboard() {
+    if (!tanks.length) return ($('scoreboard').innerHTML = '');
+    $('scoreboard').innerHTML = tanks
+      .map((t) => {
+        const p = room && room.players.find((pp) => pp.id === t.id);
+        const hpPct = Math.max(0, Math.round((100 * t.hp) / t.maxHp));
+        const hpColor = hpPct > 50 ? '#6fd36f' : hpPct > 25 ? '#f2c230' : '#e8553b';
+        const tags = [t.id === myId ? 'du' : '', p && p.isBot ? '🤖' : '', isOffline(t.id) ? 'getrennt' : ''].filter(Boolean).join(' · ');
+        return `<div class="sb${t.id === currentId && phase !== 'idle' ? ' active' : ''}${t.alive ? '' : ' dead'}" style="--c:${t.color}">
+          <div class="sb-name"><span class="dot" style="background:${t.color}"></span>${esc(t.name)}${tags ? `<small>${tags}</small>` : ''}</div>
+          <div class="sb-hp"><span style="width:${hpPct}%;background:${hpColor}"></span></div>
+          <div class="sb-row"><span>${t.alive ? `❤ ${t.hp}/${t.maxHp}` : '💀 zerstört'}</span>${t.shield > 0 ? `<span class="shield">🛡 ${t.shield}</span>` : ''}</div>
+          <div class="sb-row"><span>Runde <b>+${t.roundPts || 0}</b></span><span>Gesamt <b>${t.score || 0}</b></span></div>
+          <div class="sb-row muted"><span>💰 ${t.money || 0}</span><span>⛽ ${t.fuel}</span></div>
+        </div>`;
+      })
+      .join('');
   }
 
   function setAim(changes) {
@@ -537,6 +570,7 @@
       if (lost > 0 && !t.alive) floaters.push({ x: t.x, y: t.y - 60, text: 'zerstört!', age: 0, color: '#fff' });
     }
     anim = null;
+    renderScoreboard();
   }
 
   function spawnDebris(ex) {
@@ -878,6 +912,10 @@
     ctx.lineTo(x + dir * len, y - 2 + flap);
     ctx.lineTo(x, y + 4);
     ctx.fill();
+    ctx.font = '700 14px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(wind === 0 ? 'windstill' : `Wind ${Math.abs(wind)} ${wind > 0 ? '→' : '←'}`, x, y + 48);
   }
 
   // ---------- input ----------
