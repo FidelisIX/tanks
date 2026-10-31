@@ -34,11 +34,15 @@ const ICONS = (() => {
       <circle cx="22" cy="18" r="2.6" fill="#7c3aed"/><circle cx="27" cy="25" r="2.2" fill="#7c3aed"/>
       <circle cx="18" cy="26" r="2.4" fill="#7c3aed"/><circle cx="25" cy="10" r="2" fill="#7c3aed"/>
       <path d="M17 15l2 1.5M16 18l1 4M18 13l4-2" stroke="#c4b5fd" stroke-width="1.2" stroke-dasharray="1.5 1.5"/>`),
-    // yellow bomb with a radiation sign
-    nuke: svg(`<path d="M5 27l-3 3M8 28l-2 3" stroke="#6b7280" stroke-width="2.2" stroke-linecap="round"/>
-      <ellipse cx="17" cy="15" rx="12" ry="9.5" transform="rotate(-35 17 15)" fill="#facc15" stroke="#854d0e" stroke-width="1.4"/>
-      <circle cx="17" cy="15" r="1.6" fill="#1f2937"/>
-      ${[0, 120, 240].map((a) => `<path d="M17 15l-3.2-5.6a6.4 6.4 0 0 1 6.4 0z" fill="#1f2937" transform="rotate(${a} 17 15)"/>`).join('')}`),
+    // aerial bomb: long body with rounded nose, box tail with fins, radiation sign; flying nose-down
+    nuke: svg(`<g transform="rotate(35 16 16)">
+      <path d="M3 10.5l6 3v5l-6 3z" fill="#a16207" stroke="#713f12" stroke-width="1"/>
+      <path d="M2.5 15h7" stroke="#713f12" stroke-width="1.2"/>
+      <path d="M9 12.5h12c4.5 0 8 1.6 9 3.5-1 1.9-4.5 3.5-9 3.5H9z" fill="#facc15" stroke="#854d0e" stroke-width="1.2"/>
+      <path d="M12 12.5v7M24.5 13.1v5.8" stroke="#854d0e" stroke-width="1.1"/>
+      <circle cx="18" cy="16" r="3.1" fill="#facc15"/>
+      ${[0, 120, 240].map((a) => `<path d="M18 16l-1.6-2.8a3.2 3.2 0 0 1 3.2 0z" fill="#1f2937" transform="rotate(${a} 18 16)"/>`).join('')}
+      <circle cx="18" cy="16" r=".7" fill="#1f2937"/></g>`),
     // glowing energy bubble around a tiny tank
     shield: svg(`<circle cx="16" cy="16" r="13" fill="rgba(127,216,255,.18)" stroke="#7fd8ff" stroke-width="2"/>
       <path d="M8 10a10 10 0 0 1 6-4" stroke="#e0f6ff" stroke-width="1.6" stroke-linecap="round" fill="none"/>

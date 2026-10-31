@@ -350,7 +350,7 @@
       const m = me();
       const inv = m.inv;
       const owned = (k) => (k === 'shield' ? inv.shields : k === 'fuel' ? inv.fuel : inv.ammo[k]);
-      html += `<div class="shop-head"><b>Shop</b><span>💰 ${m.money}</span><span id="shop-timer"></span></div><div class="shop">`;
+      html += `<div class="shop-head"><b>Shop</b><span>💰 ${m.money}</span><button class="link" data-help-open>Was bringt was?</button><span id="shop-timer"></span></div><div class="shop">`;
       for (const [k, it] of Object.entries(P.SHOP_ITEMS)) {
         html += `<button data-buy="${k}" ${m.money < it.price || m.ready ? 'disabled' : ''} title="${esc(it.desc || '')}">
           ${ICONS[k] || ''}<span>${it.name}${it.qty > 1 ? ` +${it.qty}` : ''}</span><small>hast ${owned(k)}</small><b>${it.price} 💰</b></button>`;
@@ -1030,6 +1030,8 @@
 
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+    if (e.key === 'h' || e.key === 'H' || e.key === '?') return Help.isOpen() ? Help.close() : Help.open();
+    if (Help.isOpen()) return;
     const t = myTank();
     if (!isMyTurn()) return;
     const step = e.shiftKey ? 1 : 3;

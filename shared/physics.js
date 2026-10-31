@@ -29,20 +29,27 @@
   const BASE_MAX_POWER = 100;
   const START_FUEL = 100;
   const DRILL_SPEED = 2;
+  // explosion damage: full at the centre, down to (1 - DAMAGE_FALLOFF) at radius + DAMAGE_REACH
+  const DAMAGE_REACH = 10;
+  const DAMAGE_FALLOFF = 0.6;
+  // fall damage: only above FALL_MIN px, fall / FALL_DIV, at most FALL_MAX
+  const FALL_MIN = 15;
+  const FALL_DIV = 6;
+  const FALL_MAX = 30;
   const MAX_PLAYERS = 4;
   const COLORS = ['#e8553b', '#3ba7e8', '#f2c230', '#9b5de5'];
 
   // ammo: amount at the start of a match (-1 = unlimited)
   // drag: relative air resistance (heavy shells are pushed around less by wind)
   const WEAPONS = {
-    shell: { name: 'Granate', radius: 28, damage: 35, ammo: -1, drag: 1 },
-    heavy: { name: 'Schwere Bombe', radius: 55, damage: 55, ammo: 2, drag: 0.6 },
-    triple: { name: 'Dreierfächer', radius: 22, damage: 24, ammo: 3, drag: 1.3, spread: [-5, 0, 5] },
-    dirt: { name: 'Erdklumpen', radius: 45, damage: 0, ammo: 2, drag: 1.5, dirt: true },
-    ball: { name: 'Ball', radius: 30, damage: 40, ammo: 3, drag: 1.1, roll: true },
-    drill: { name: 'Bohrer', radius: 32, damage: 45, ammo: 0, drag: 0.8, drill: 90 },
-    cluster: { name: 'Splitterbombe', radius: 20, damage: 20, ammo: 0, drag: 1, cluster: { count: 5, spread: 1.1 } },
-    nuke: { name: 'Atombombe', radius: 115, damage: 95, ammo: 0, drag: 0.5 },
+    shell: { name: 'Granate', radius: 28, damage: 35, ammo: -1, drag: 1, desc: 'Standardgeschoss, unbegrenzt. Explodiert beim ersten Kontakt mit Boden, Panzer oder Schild.' },
+    heavy: { name: 'Schwere Bombe', radius: 55, damage: 55, ammo: 2, drag: 0.6, desc: 'Großer Krater und viel Schaden. Schwer, deshalb wenig vom Wind abgetrieben.' },
+    triple: { name: 'Dreierfächer', radius: 22, damage: 24, ammo: 3, drag: 1.3, spread: [-5, 0, 5], desc: 'Drei leichte Geschosse im Fächer (−5°, 0°, +5°). Gut gegen weit verteilte oder schwer zu treffende Ziele; stark windanfällig.' },
+    dirt: { name: 'Erdklumpen', radius: 45, damage: 0, ammo: 2, drag: 1.5, dirt: true, desc: 'Macht keinen Schaden, sondern baut einen Erdhügel auf: Deckung vor dir oder einen Gegner eingraben.' },
+    ball: { name: 'Ball', radius: 30, damage: 40, ammo: 3, drag: 1.1, roll: true, desc: 'Rollt nach dem Aufprall den Hang hinunter, prallt an steilen Wänden ab und fliegt über Klippen. Explodiert, wenn er liegen bleibt oder einen Panzer berührt – ideal für Gegner in Mulden.' },
+    drill: { name: 'Bohrer', radius: 32, damage: 45, ammo: 0, drag: 0.8, drill: 90, desc: 'Gräbt sich nach dem Aufprall bis zu 90 px weiter durch die Erde und explodiert dann – trifft Gegner hinter Hügeln oder unter Erdhaufen.' },
+    cluster: { name: 'Splitterbombe', radius: 20, damage: 20, ammo: 0, drag: 1, cluster: { count: 5, spread: 1.1 }, desc: 'Zerfällt am höchsten Punkt der Flugbahn in 5 Splitter (je 18 Schaden, Krater 18 px), die sich auffächern.' },
+    nuke: { name: 'Atombombe', radius: 115, damage: 95, ammo: 0, drag: 0.5, desc: 'Riesiger Krater und fast tödlicher Schaden im ganzen Umkreis; bricht viel Boden weg (Fallschaden). Kaum windanfällig, sehr teuer.' },
     bomblet: { name: 'Splitter', radius: 18, damage: 18, ammo: 0, drag: 1.3 }, // spawned by cluster only
   };
   const WEAPON_ORDER = ['shell', 'heavy', 'triple', 'dirt', 'ball', 'drill', 'cluster', 'nuke'];
@@ -330,9 +337,9 @@
     if (!weapon.damage) return 0;
     const c = tankCenter(tank);
     const d = Math.hypot(c.x - ex.x, c.y - ex.y);
-    const reach = ex.r + 10;
+    const reach = ex.r + DAMAGE_REACH;
     if (d >= reach) return 0;
-    return Math.round(weapon.damage * (1 - 0.6 * (d / reach)));
+    return Math.round(weapon.damage * (1 - DAMAGE_FALLOFF * (d / reach)));
   }
 
   // Drops tanks onto the (possibly changed) ground; returns fall damage per tank id.
@@ -344,7 +351,7 @@
       if (ground > tank.y) {
         const fall = ground - tank.y;
         tank.y = ground;
-        if (fall > 15) dmg[tank.id] = Math.min(30, Math.round(fall / 6));
+        if (fall > FALL_MIN) dmg[tank.id] = Math.min(FALL_MAX, Math.round(fall / FALL_DIV));
       } else if (ground < tank.y) {
         // buried by dirt: stay on top
         tank.y = ground;
@@ -359,7 +366,7 @@
 
   return {
     W, H, GRAVITY, MAX_WIND, SHIELD_RADIUS, SHIELD_HP, TANK_RADIUS, BARREL, TURRET_Y, ANIM_SPEED, TURN_SECONDS,
-    SHOP_SECONDS, ROUND_OPTIONS, MAX_PLAYERS, COLORS, WEAPONS, WEAPON_ORDER, SHOP_ITEMS, UPGRADES, REWARDS,
+    SHOP_SECONDS, ROUND_OPTIONS, DAMAGE_REACH, DAMAGE_FALLOFF, FALL_MIN, FALL_DIV, FALL_MAX, BASE_HP, BASE_MAX_POWER, MAX_PLAYERS, COLORS, WEAPONS, WEAPON_ORDER, SHOP_ITEMS, UPGRADES, REWARDS,
     newInventory, maxHp, maxPower, shieldHp, fallFactor,
     generateTerrain, placeTanks, carve, addDirt, applyCrater, barrelTip, simulateShot, fireShells,
     explosionDamage, settleTanks,

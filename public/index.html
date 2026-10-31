@@ -29,6 +29,7 @@
       <button id="btn-solo">Alleine gegen den Computer spielen</button>
       <p id="menu-error" class="error"></p>
       <a href="statistik.html" class="stats-link">Statistik &amp; Rekorde ansehen</a>
+      <button class="link" data-help-open>Waffen &amp; Upgrades</button>
     </section>
 
     <!-- Waiting room -->
@@ -54,6 +55,7 @@
       </label>
       <button id="btn-start" class="primary">Match starten</button>
       <p id="room-hint" class="hint"></p>
+      <button class="link" data-help-open>Waffen &amp; Upgrades</button>
       <button id="btn-leave" class="link">Raum verlassen</button>
     </section>
 
@@ -87,14 +89,17 @@
           <span id="fuel"></span>
           <button id="btn-right" title="Nach rechts fahren (D)" disabled>▶</button>
         </div>
+        <button id="btn-help" data-help-open title="Waffen &amp; Upgrades (Taste H)">?</button>
         <button id="btn-fire" class="fire" disabled>FEUER!</button>
       </div>
-      <p class="hint keys">Tastatur: ←/→ Winkel · ↑/↓ Kraft · 1–8 Waffe · S Schild · A/D fahren · Leertaste Feuer (Shift = feiner)</p>
+      <p class="hint keys">Tastatur: ←/→ Winkel · ↑/↓ Kraft · 1–8 Waffe · S Schild · A/D fahren · Leertaste Feuer (Shift = feiner) · H Hilfe</p>
     </section>
   </main>
 
   <script src="/shared/physics.js"></script>
+  <div id="help" class="modal hidden" role="dialog" aria-label="Waffen und Upgrades"><div class="card wide" id="help-card"></div></div>
   <script src="icons.js"></script>
+  <script src="help.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

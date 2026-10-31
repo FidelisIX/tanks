@@ -119,6 +119,22 @@ button.fire {
 }
 .keys { margin-top: 8px; text-align: center; }
 
+/* help */
+.modal { position: fixed; inset: 0; z-index: 20; background: rgba(10, 12, 16, 0.75); display: flex; align-items: flex-start; justify-content: center; padding: 16px; overflow-y: auto; }
+.modal .card.wide { margin: 0; max-width: 900px; text-align: left; max-height: none; overflow: visible; }
+.modal .card > * { flex-shrink: 0; }
+.help-head { display: flex; justify-content: space-between; align-items: center; }
+.help-head h2 { margin: 0; }
+.modal h3 { margin: 10px 0 0; font-size: 16px; }
+.help-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.help-table th { color: var(--muted); font-weight: 500; text-align: left; }
+.help-table td, .help-table th { padding: 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.h-name { display: flex; gap: 8px; align-items: flex-start; min-width: 220px; }
+.h-name span { display: flex; flex-direction: column; gap: 2px; }
+.h-name small { color: var(--muted); }
+.help-rules { margin: 4px 0 0; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+#btn-help { width: 40px; font-weight: 800; font-size: 17px; padding: 8px 0; }
+
 /* turn, wind, scoreboard */
 #topbar { align-items: center; }
 .turn-pill {

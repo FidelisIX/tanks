@@ -18,7 +18,10 @@ Während des Spiels zeigt die Anzeigetafel über der Spielfläche für jeden Pan
 laufenden Runde, Gesamtpunkte, Geld und Treibstoff. Oben stehen, wer dran ist, die Runde, der Wind (Pfeil: Länge =
 Stärke, Richtung = Windrichtung) und die verbleibende Zugzeit.
 
-**Steuerung:** ←/→ Winkel · ↑/↓ Kraft · 1–8 Waffe · S Schild · A/D fahren · Leertaste Feuer (Shift für feine Schritte).
+**Steuerung:** ←/→ Winkel · ↑/↓ Kraft · 1–8 Waffe · S Schild · A/D fahren · Leertaste Feuer (Shift für feine Schritte) · H Hilfe.
+
+Alle Werte zu Waffen, Schild und Upgrades stehen in der **Hilfe im Spiel** (Knopf „?“, Taste H, Link im Menü und im Shop)
+und in [docs/WAFFEN.md](docs/WAFFEN.md).
 Auf dem Handy über Schieberegler und Buttons.
 
 | Waffe | Wirkung | Munition |
@@ -128,4 +131,4 @@ Hinweis: Laut Render-Dokumentation schläft ein Dienst im kostenlosen Plan nach 
 - `shared/physics.js`: Gelände, Ballistik, Waffen, Shop und Preise. Wird von Server und Browser gemeinsam genutzt.
 - `public/`: Browser-Client (Canvas, kein Framework) und Statistikseite.
 
-Projektnotizen: [docs/NOTIZEN.md](docs/NOTIZEN.md) · Bugs: [docs/BUGS.md](docs/BUGS.md) · Wünsche: [docs/FEATURE_REQUESTS.md](docs/FEATURE_REQUESTS.md)
+Projektnotizen: [docs/NOTIZEN.md](docs/NOTIZEN.md) · Waffen & Upgrades: [docs/WAFFEN.md](docs/WAFFEN.md) · Bugs: [docs/BUGS.md](docs/BUGS.md) · Wünsche: [docs/FEATURE_REQUESTS.md](docs/FEATURE_REQUESTS.md)
