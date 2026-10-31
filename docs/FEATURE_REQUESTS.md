@@ -37,6 +37,6 @@ Vorschlag: die bisherigen Wegwerf-Tests (WebSocket-Bots, Playwright) als `npm te
 | F-013 | Räume überstehen Deploys/Neustarts (aus Ortsraten) | `2666462` |
 | F-014 | Statistik & Rekorde (aus Ortsraten) | `2666462` |
 | F-015 | Alleine spielen gegen Computergegner (Leicht/Mittel/Schwer) | `2666462` |
-| F-016 | Anzeigen: wer dran ist, Lebenspunkte, Punkte der Runde, Windstärke und -richtung | Commit mit der Anzeigetafel |
-| F-017 | Dokumente für Notizen, Bugs und Feature Requests | dieser Commit |
+| F-016 | Anzeigen: wer dran ist, Lebenspunkte, Punkte der Runde, Windstärke und -richtung | `2016029` |
+| F-017 | Dokumente für Notizen, Bugs und Feature Requests | `2016029` |
 | F-018 | Bilder vom Spiel und von der Atombombe | nur als Bilder in der Sitzung, nicht im Repo |

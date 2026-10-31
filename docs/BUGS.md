@@ -43,4 +43,4 @@ tatsächlich abgezogene Schaden. Behoben in `24355ad`.
 
 ### B-003 – Bedienelemente während des Countdowns anklickbar
 FEUER! und die Regler waren vor dem ersten Zug aktiv (der Server hat den Schuss abgelehnt). Jetzt sind sie
-anfangs gesperrt. Behoben mit dem Commit, der die Anzeigetafel eingeführt hat.
+anfangs gesperrt. Behoben in `2016029`.
