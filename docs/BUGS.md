@@ -36,7 +36,7 @@ Einrichtung: siehe README, Abschnitt „Statistik und Neustarts“.
 
 ### B-009 – Windpfeil bei „mittel“ und „stark“ gleich lang
 Die Pfeillänge war Stärke × 10 % der Anzeige, begrenzt auf 50 %. Damit war der Pfeil ab Stärke 5 immer gleich lang.
-Jetzt wächst er bis Stärke 10 gleichmäßig und bleibt innerhalb der Anzeige.
+Jetzt wächst er bis Stärke 10 gleichmäßig und bleibt innerhalb der Anzeige. Behoben in `d32e3ef`.
 
 ### B-001 – Feuern mit leer geschossener Waffe tat nichts
 Nach dem letzten Schuss einer Spezialwaffe blieb sie ausgewählt; FEUER! wurde ignoriert, bis der Zug nach

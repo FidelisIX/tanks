@@ -40,4 +40,4 @@ Vorschlag: die bisherigen Wegwerf-Tests (WebSocket-Bots, Playwright) als `npm te
 | F-016 | Anzeigen: wer dran ist, Lebenspunkte, Punkte der Runde, Windstärke und -richtung | `2016029` |
 | F-017 | Dokumente für Notizen, Bugs und Feature Requests | `2016029` |
 | F-018 | Bilder vom Spiel und von der Atombombe | nur als Bilder in der Sitzung, nicht im Repo |
-| F-023 | Illustrationen für die Waffen in der Auswahl (und im Shop) | dieser Commit |
+| F-023 | Illustrationen für die Waffen in der Auswahl (und im Shop) | `d32e3ef` |
