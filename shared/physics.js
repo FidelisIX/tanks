@@ -26,6 +26,7 @@
   const SHOP_SECONDS = 30;
   const ROUND_OPTIONS = [3, 5, 10];
   const BASE_HP = 100;
+  const ARMOR_REDUCTION = 0.1; // explosion damage taken per armor level
   const BASE_MAX_POWER = 100;
   const START_FUEL = 100;
   const DRILL_SPEED = 2;
@@ -67,7 +68,7 @@
     fuel: { name: 'Treibstoff', price: 20, qty: 60, desc: 'zum Fahren (A/D)' },
   };
   const UPGRADES = {
-    armor: { name: 'Panzerung', desc: '+15 max. Lebenspunkte', prices: [80, 120, 160] },
+    armor: { name: 'Panzerung', desc: '−10 % Explosionsschaden', prices: [80, 120, 160] },
     shieldBoost: { name: 'Schildverstärker', desc: '+30 Schildpunkte', prices: [70, 110] },
     shock: { name: 'Stoßdämpfer', desc: '−50 % Fallschaden', prices: [60, 90] },
     cannon: { name: 'Turbo-Kanone', desc: '+10 max. Kraft', prices: [70, 110] },
@@ -80,8 +81,13 @@
     return { ammo, shields: 1, fuel: START_FUEL, upgrades: { armor: 0, shieldBoost: 0, shock: 0, cannon: 0 } };
   }
 
-  function maxHp(inv) {
-    return BASE_HP + 15 * inv.upgrades.armor;
+  // Armor reduces the explosion damage a tank takes instead of adding hit points, so an
+  // armored tank does not hand out more points to its attackers.
+  function maxHp() {
+    return BASE_HP;
+  }
+  function damageFactor(inv) {
+    return Math.max(0, 1 - ARMOR_REDUCTION * inv.upgrades.armor);
   }
   function maxPower(inv) {
     return BASE_MAX_POWER + 10 * inv.upgrades.cannon;
@@ -367,7 +373,7 @@
   return {
     W, H, GRAVITY, MAX_WIND, SHIELD_RADIUS, SHIELD_HP, TANK_RADIUS, BARREL, TURRET_Y, ANIM_SPEED, TURN_SECONDS,
     SHOP_SECONDS, ROUND_OPTIONS, DAMAGE_REACH, DAMAGE_FALLOFF, FALL_MIN, FALL_DIV, FALL_MAX, BASE_HP, BASE_MAX_POWER, MAX_PLAYERS, COLORS, WEAPONS, WEAPON_ORDER, SHOP_ITEMS, UPGRADES, REWARDS,
-    newInventory, maxHp, maxPower, shieldHp, fallFactor,
+    ARMOR_REDUCTION, newInventory, maxHp, damageFactor, maxPower, shieldHp, fallFactor,
     generateTerrain, placeTanks, carve, addDirt, applyCrater, barrelTip, simulateShot, fireShells,
     explosionDamage, settleTanks,
   };

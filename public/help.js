@@ -29,7 +29,9 @@ const Help = (() => {
   function upgradeRows() {
     return Object.entries(P.UPGRADES)
       .map(([k, u]) => `<tr><td class="h-name">${ICONS[k] || ''}<span><b>${u.name}</b></span></td>
-        <td>${u.desc}${k === 'shock' ? ` (Stufe ${u.prices.length} = kein Fallschaden)` : ''}</td>
+        <td>${u.desc}${k === 'shock' ? ` (Stufe ${u.prices.length} = kein Fallschaden)` : ''}${
+          k === 'armor' ? ` (höchstens −${Math.round(P.ARMOR_REDUCTION * u.prices.length * 100)} %; wirkt vor dem Schild, nicht bei Fallschaden)` : ''
+        }</td>
         <td>${u.prices.length}</td><td>${u.prices.join(' / ')}</td></tr>`)
       .join('');
   }

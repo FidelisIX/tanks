@@ -43,3 +43,4 @@ Vorschlag: die bisherigen Wegwerf-Tests (WebSocket-Bots, Playwright) als `npm te
 | F-023 | Illustrationen für die Waffen in der Auswahl (und im Shop) | `d32e3ef` |
 | F-024 | Doku für Waffen und Upgrades: `docs/WAFFEN.md` und Hilfe im Spiel („?“, Taste H) | `fd8b2e6` |
 | F-025 | Atombomben-Symbol als Fliegerbombe statt Oval | `fd8b2e6` |
+| F-026 | Panzerung verringert den erlittenen Schaden (−10 % pro Stufe) statt Lebenspunkte zu erhöhen – sonst bekäme der Gegner mehr Punkte | dieser Commit |

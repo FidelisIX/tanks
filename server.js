@@ -208,7 +208,7 @@ function makeTank(p, x, terrain) {
     id: p.id, name: p.name, color: p.color, x, y: terrain[x], hp, maxHp: hp, alive: true,
     angle: x < P.W / 2 ? 45 : 135, power: 60, maxPower: P.maxPower(p.inv), weapon: 'shell',
     inv: p.inv, ammo: p.inv.ammo, // shared with the player: what is left carries over to the next round
-    shield: 0, shieldMax: P.shieldHp(p.inv), fallFactor: P.fallFactor(p.inv),
+    shield: 0, shieldMax: P.shieldHp(p.inv), fallFactor: P.fallFactor(p.inv), damageFactor: P.damageFactor(p.inv),
   };
 }
 
@@ -409,7 +409,8 @@ function fire(room, tank) {
   for (const s of shells.filter((s) => s.explosion).sort((a, b) => a.explosion.tick - b.explosion.tick)) {
     for (const t of g.tanks) {
       if (!t.alive) continue;
-      const dmg = P.explosionDamage(t, s.explosion, P.WEAPONS[s.w]);
+      // armor works before the shield
+      const dmg = Math.round(P.explosionDamage(t, s.explosion, P.WEAPONS[s.w]) * (t.damageFactor ?? 1));
       if (dmg <= 0) continue;
       const res = damage(t, dmg);
       credit(t, res.dmg + res.absorbed);
