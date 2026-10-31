@@ -6,8 +6,8 @@ Status: **offen**, **wartet auf Entscheidung**, **umgesetzt** (mit Commit) oder 
 ## Offen / wartet auf Entscheidung
 
 ### F-019 – Render-Konfiguration wie bei Ortsraten
-`branch: main`, `region: frankfurt`, `numInstances: 1` in `render.yaml`, dafür einen Branch `main` anlegen.
-Vorgeschlagen am 2026-10-31, **wartet auf Entscheidung des Besitzers**.
+Teil 1 umgesetzt (2026-10-31): Render läuft über `main` (`branch: main`, Branch `main` angelegt).
+Noch offen, nicht entschieden: `region: frankfurt` und `numInstances: 1`.
 
 ### F-020 – Mehr Spieler pro Raum (bis 6)
 Aus Ortsraten (dort bis 12). Am 2026-10-31 zur Auswahl gestellt, vom Besitzer **vorerst nicht gewählt**.

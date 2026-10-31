@@ -32,10 +32,10 @@ render.yaml          Render-Blueprint
 ## Deployment (Render)
 
 - Der Besitzer hat den Blueprint auf Render angelegt (2026-10-30).
-- **Offen:** `render.yaml` legt weder `branch` noch `region` fest. Es gibt im Repo bisher nur den Branch
-  `claude/gifted-johnson-szzmkh`. Vorschlag an den Besitzer (noch nicht entschieden): Branch `main` anlegen und
-  `branch: main`, `region: frankfurt`, `numInstances: 1` setzen, wie im Ortsraten-Repo. Ob sich die Region eines
-  bestehenden Render-Dienstes ändern lässt, ist nicht geprüft.
+- **Render deployt von `main`** (Entscheidung des Besitzers, 2026-10-31; `branch: main` in `render.yaml`).
+  Entwickelt wird auf eigenen Branches (bisher `claude/gifted-johnson-szzmkh`). Ein Push auf `main` löst einen Deploy aus.
+- Offen: `region` (z. B. `frankfurt`) und `numInstances: 1` sind nicht gesetzt; der Besitzer hat nur den Branch
+  entschieden. Ob sich die Region eines bestehenden Render-Dienstes ändern lässt, ist nicht geprüft.
 - **Dauerhafte Statistik und Raumsicherung** brauchen auf Render die Umgebungsvariable `STATS_GITHUB_TOKEN`
   (Fine-grained Token, nur `FidelisIX/tanks`, „Contents: Read and write“). Daten landen im Branch `statistik`
   (`spiele/JJJJ-MM.jsonl`, `raeume/<CODE>.json`). Der Branch darf nicht der Deploy-Branch sein.

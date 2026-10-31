@@ -5,3 +5,5 @@
 - Krater-Kommando ist ein **eigenes** Spiel im Genre von „Tanks“ (addictinggames.com), keine Kopie davon.
 - Bei Unklarheiten den Besitzer fragen statt raten; Aussagen mit Quellen oder Messdaten belegen.
 - Oberfläche und Doku auf Deutsch, Code-Kommentare auf Englisch.
+- Render deployt bei jedem Push auf `main`. Code-Änderungen auf einem eigenen Branch entwickeln und testen;
+  nach `main` nur mit Zustimmung des Besitzers.

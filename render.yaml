@@ -3,6 +3,8 @@ services:
     name: krater-kommando
     runtime: node
     plan: free
+    # deploys every push to main; development happens on other branches
+    branch: main
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /healthz
