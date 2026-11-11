@@ -26,14 +26,6 @@ zuletzt beigetretenen Tabs übernehmen. Für normale Nutzung (ein Spieler pro Ge
 diese Zeit, auch für andere Räume. Wie lange genau, ist **nicht gemessen**. Bei vielen gleichzeitigen Räumen mit
 Bots prüfen.
 
-### B-014 – Statistik wird nicht in den Branch `statistik` geschrieben
-Nach dem ersten Live-Match (2026-11-11, Raum VHWJ) zeigte die Live-Statistik das Match, im Branch `statistik` kam aber
-nichts an (kein `spiele/2026-11.jsonl`, kein Commit). Lesen klappt (`persistent: true`, `loaded: true`).
-Testmatch „Claude-Test“ (Raum ZSBD, 2026-11-11 22:28 UTC) bestätigt den Fehler. Render-Log:
-`Statistik nicht gespeichert: GitHub: Speichern fehlgeschlagen (403) {"message":"Resource not accessible by personal access token", …}`
-Ursache: Der Fine-grained Token hat für Contents nur Lese-, keine Schreibrechte. Kein Code-Fehler.
-Lösung beim Besitzer: Token-Berechtigung „Contents“ auf „Read and write“ stellen. Danach mit einem Match erneut prüfen.
-
 ## So gewollt
 
 ### B-006 – Ohne Token sind Statistik und Räume nach einem Neustart weg
@@ -41,6 +33,16 @@ Ohne `STATS_GITHUB_TOKEN` nutzt der Server nur den Arbeitsspeicher. Die Statisti
 Einrichtung: siehe README, Abschnitt „Statistik und Neustarts“.
 
 ## Behoben
+
+### B-014 – Statistik wird nicht in den Branch `statistik` geschrieben
+Nach dem ersten Live-Match (2026-11-11, Raum VHWJ) zeigte die Live-Statistik das Match, im Branch `statistik` kam aber
+nichts an (kein `spiele/2026-11.jsonl`, kein Commit). Lesen klappt (`persistent: true`, `loaded: true`).
+Testmatch „Claude-Test“ (Raum ZSBD, 2026-11-11 22:28 UTC) bestätigt den Fehler. Render-Log:
+`Statistik nicht gespeichert: GitHub: Speichern fehlgeschlagen (403) {"message":"Resource not accessible by personal access token", …}`
+Ursache: Der Fine-grained Token hat für Contents nur Lese-, keine Schreibrechte. Kein Code-Fehler.
+Lösung beim Besitzer: Token-Berechtigung „Contents“ auf „Read and write“ stellen. Danach mit einem Match erneut prüfen.
+Behoben am 2026-11-11 nach Änderung der Token-Rechte: Testmatch JAJY wurde als Commit „Statistik: Match JAJY …“ in
+`spiele/2026-11.jsonl` geschrieben (Testeintrag danach wieder entfernt, `ee69b9f` im Branch `statistik`).
 
 ### B-012 – Panzer bleiben am Rand ihrer Startplattform hängen
 Spieler-Feedback „zu wenig Reichweite für Fahren“. Beim Rundenstart wird unter jedem Panzer ein Stück eingeebnet; an dessen

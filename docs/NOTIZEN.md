@@ -45,7 +45,7 @@ render.yaml          Render-Blueprint
   (Fine-grained Token, nur `FidelisIX/tanks`, „Contents: Read and write“). Daten landen im Branch `statistik`
   (`spiele/JJJJ-MM.jsonl`, `raeume/<CODE>.json`). Der Branch darf nicht der Deploy-Branch sein.
   Der Branch `statistik` existiert seit 2026-11-11 (leerer Datenbranch mit README, ohne Code).
-  Ob der Token schon eingerichtet ist: unbekannt.
+  Token ist auf Render eingerichtet und hat Schreibrechte (bestätigt 2026-11-11, siehe B-014).
 
 ## Testen
 
