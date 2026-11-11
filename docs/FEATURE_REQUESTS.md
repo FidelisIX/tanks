@@ -50,4 +50,4 @@ Vorschlag: die bisherigen Wegwerf-Tests (WebSocket-Bots, Playwright) als `npm te
 | F-030 | Spieler-Feedback: Upgrade für besseres Bergauffahren – Kletterketten, 2 Stufen | `b000717` |
 | F-031 | Spieler-Feedback: Upgrades/Waffen zu teuer – alles 30 % billiger, Atombombe halber Preis | `b000717` |
 | F-032 | Spieler-Feedback: zu wenig Reichweite beim Fahren – 300 Treibstoff pro Runde statt 100 pro Match | `b000717` |
-| F-033 | Bohrer gräbt weiter: 150 px statt 90 px (90 px war kürzer als die Explosionsradien großer Waffen) | dieser Commit |
+| F-033 | Bohrer gräbt weiter: 150 px statt 90 px (90 px war kürzer als die Explosionsradien großer Waffen) | `042d76b` |
