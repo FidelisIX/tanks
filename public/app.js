@@ -259,6 +259,7 @@
   function show(name) {
     for (const s of ['menu', 'room', 'game']) $(`screen-${s}`).classList.toggle('hidden', s !== name);
     document.body.classList.toggle('in-game', name === 'game');
+    if (name === 'game') requestAnimationFrame(fitCanvas);
   }
 
   function showError(text) {
@@ -472,7 +473,28 @@
       : '';
     renderWind();
     renderScoreboard();
+    fitCanvas();
   }
+
+  // Make the play area as large as the window allows (keeping its aspect ratio): the width of
+  // the page, and whatever height is left after the bars above and below it.
+  function fitCanvas() {
+    if ($('screen-game').classList.contains('hidden')) return;
+    const wrap = $('canvas-wrap');
+    const used = ['topbar', 'scoreboard', 'controls'].reduce((h, id) => h + $(id).offsetHeight, 0);
+    const keys = document.querySelector('.keys');
+    const banner = $('conn-banner');
+    const extra = (keys ? keys.offsetHeight : 0) + (banner.classList.contains('hidden') ? 0 : banner.offsetHeight) + 34; // gaps and padding
+    const maxH = Math.max(240, window.innerHeight - used - extra);
+    const w = Math.min(wrap.clientWidth, (maxH * P.W) / P.H);
+    canvas.style.width = `${Math.floor(w)}px`;
+    canvas.style.height = `${Math.floor((w * P.H) / P.W)}px`;
+  }
+  window.addEventListener('resize', fitCanvas);
+  document.addEventListener('fullscreenchange', () => {
+    $('btn-fullscreen').textContent = document.fullscreenElement ? '⛶ Vollbild aus' : '⛶ Vollbild';
+    fitCanvas();
+  });
 
   // Wind: arrow length = strength, arrow direction = where the wind blows.
   function renderWind() {
@@ -494,11 +516,10 @@
         const hpColor = hpPct > 50 ? '#6fd36f' : hpPct > 25 ? '#f2c230' : '#e8553b';
         const tags = [t.id === myId ? 'du' : '', p && p.isBot ? '🤖' : '', isOffline(t.id) ? 'getrennt' : ''].filter(Boolean).join(' · ');
         return `<div class="sb${t.id === currentId && phase !== 'idle' ? ' active' : ''}${t.alive ? '' : ' dead'}" style="--c:${t.color}">
-          <div class="sb-name"><span class="dot" style="background:${t.color}"></span>${esc(t.name)}${tags ? `<small>${tags}</small>` : ''}</div>
+          <div class="sb-name"><span class="dot" style="background:${t.color}"></span>${esc(t.name)}${tags ? `<small>${tags}</small>` : ''}
+            <span class="sb-hpnum">${t.alive ? `❤ ${t.hp}/${t.maxHp}` : '💀 zerstört'}${t.shield > 0 ? ` <span class="shield">🛡 ${t.shield}</span>` : ''}</span></div>
           <div class="sb-hp"><span style="width:${hpPct}%;background:${hpColor}"></span></div>
-          <div class="sb-row"><span>${t.alive ? `❤ ${t.hp}/${t.maxHp}` : '💀 zerstört'}</span>${t.shield > 0 ? `<span class="shield">🛡 ${t.shield}</span>` : ''}</div>
-          <div class="sb-row"><span>Runde <b>+${t.roundPts || 0}</b></span><span>Gesamt <b>${t.score || 0}</b></span></div>
-          <div class="sb-row muted"><span>💰 ${t.money || 0}</span><span>⛽ ${Math.floor(t.fuel)}</span></div>
+          <div class="sb-row"><span>Runde <b>+${t.roundPts || 0}</b> · Gesamt <b>${t.score || 0}</b></span><span class="muted">💰 ${t.money || 0} · ⛽ ${Math.floor(t.fuel)}</span></div>
         </div>`;
       })
       .join('');
@@ -617,6 +638,7 @@
     }
     anim = null;
     renderScoreboard();
+    fitCanvas();
   }
 
   function spawnDebris(ex) {
@@ -1108,6 +1130,10 @@
     if (b) setAim({ weapon: b.dataset.w });
   };
   $('btn-fire').onclick = fire;
+  $('btn-fullscreen').onclick = () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else document.documentElement.requestFullscreen().catch(() => {});
+  };
 
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;

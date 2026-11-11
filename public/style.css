@@ -159,7 +159,9 @@ canvas.targeting { cursor: crosshair; }
 .sb.active { border-color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
 .sb.dead { opacity: 0.5; }
 .sb-name { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; }
-.sb-name small { color: var(--muted); font-weight: 500; margin-left: auto; }
+.sb-name small { color: var(--muted); font-weight: 500; }
+.sb-hpnum { margin-left: auto; font-weight: 500; font-size: 13px; }
+.sb .muted { color: var(--muted); }
 .sb-hp { height: 6px; background: #0f1218; border-radius: 3px; overflow: hidden; }
 .sb-hp span { display: block; height: 100%; }
 .sb-row { display: flex; justify-content: space-between; gap: 8px; }
@@ -204,12 +206,12 @@ table.earn td:first-child { text-align: left; font-weight: 600; }
 .ranking { list-style: none; padding: 0; margin: 0; text-align: left; }
 .ranking li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
 /* in a game: compact header and a canvas that leaves room for the controls */
-body.in-game header { display: flex; align-items: baseline; justify-content: center; gap: 12px; margin-bottom: 4px; }
-body.in-game h1 { font-size: 20px; margin: 0; }
-body.in-game .tag { display: none; }
-body.in-game main { padding-top: 6px; }
-body.in-game canvas { max-height: max(300px, calc(100vh - 330px)); width: auto; max-width: 100%; margin: 0 auto; }
+/* the title is hidden in a game; the page uses the full window width and fitCanvas() sizes the play area */
+body.in-game header { display: none; }
+body.in-game main { max-width: none; padding: 6px 12px 8px; }
+body.in-game canvas { max-width: 100%; margin: 0 auto; }
 body.in-game #canvas-wrap { display: flex; justify-content: center; }
+#btn-fullscreen { font-size: 13px; padding: 4px 6px; }
 body.in-game #controls { margin-top: 6px; padding: 8px 12px; }
 body.in-game .keys { margin-top: 4px; }
 body.in-game #scoreboard { gap: 6px; margin-bottom: 6px; }
