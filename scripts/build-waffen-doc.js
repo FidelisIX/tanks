@@ -95,7 +95,7 @@ tatsächlich erlittenen Schaden, an einem gepanzerten Panzer verdient er also we
 ## Tipps
 
 - **Gegner in einer Mulde:** Der Ball rollt den Hang hinunter und explodiert am tiefsten Punkt.
-- **Gegner hinter einem Hügel:** Der Bohrer gräbt sich bis zu 90 px durch die Erde.
+- **Gegner hinter einem Hügel:** Der Bohrer gräbt sich bis zu ${P.WEAPONS.drill.drill} px durch die Erde und zündet, sobald er nah an einen Gegner kommt.
 - **Gegner mit Schild:** Mehrere kleine Treffer (Dreierfächer, Splitterbombe) bauen den Schild ab; danach mit einer starken Waffe nachlegen.
 - **Selbst in Gefahr:** Ein Erdklumpen vor dem eigenen Panzer gibt Deckung; ein Schild schützt, kostet aber den Zug.
   Ein Teleport bringt dich aus einem tiefen Krater oder aus der Schusslinie.

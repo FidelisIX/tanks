@@ -40,6 +40,13 @@ Einrichtung: siehe README, Abschnitt „Statistik und Neustarts“.
 
 ## Behoben
 
+### B-016 – Bohrer „funktioniert nicht richtig“
+Spieler-Feedback (2026-11-11). Gemessen: 80 Schüsse mit Einschlag 5–20 px vor dem Gegner (Windstille). Bohrer Ø 28 Schaden,
+aber 20 von 80 ohne jeden Schaden (Granate: Ø 24, 0 ohne Schaden): Er grub am Gegner vorbei oder unter ihm durch und
+explodierte im Mittel 31 px entfernt. Lösung: Annäherungszünder (`DRILL_FUSE` = 28 px zu einem gegnerischen Panzer)
+und Grablänge 90 → 150 px (Wunsch des Besitzers). Danach: Ø 37 Schaden, 0 von 80 ohne Schaden, Explosion im Mittel 13 px
+vom Gegner. Behoben in diesem Commit.
+
 ### B-014 – Statistik wird nicht in den Branch `statistik` geschrieben
 Nach dem ersten Live-Match (2026-11-11, Raum VHWJ) zeigte die Live-Statistik das Match, im Branch `statistik` kam aber
 nichts an (kein `spiele/2026-11.jsonl`, kein Commit). Lesen klappt (`persistent: true`, `loaded: true`).

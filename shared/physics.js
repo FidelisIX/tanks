@@ -38,6 +38,7 @@
   ];
   const TELEPORT_MIN_DISTANCE = 40; // px to the nearest other tank
   const DRILL_SPEED = 2;
+  const DRILL_FUSE = 28; // a digging drill goes off when it gets this close to an enemy tank
   // explosion damage: full at the centre, down to (1 - DAMAGE_FALLOFF) at radius + DAMAGE_REACH
   const DAMAGE_REACH = 10;
   const DAMAGE_FALLOFF = 0.6;
@@ -56,7 +57,7 @@
     triple: { name: 'Dreierfächer', radius: 22, damage: 24, ammo: 3, drag: 1.3, spread: [-5, 0, 5], desc: 'Drei leichte Geschosse im Fächer (−5°, 0°, +5°). Gut gegen weit verteilte oder schwer zu treffende Ziele; stark windanfällig.' },
     dirt: { name: 'Erdklumpen', radius: 45, damage: 0, ammo: 2, drag: 1.5, dirt: true, desc: 'Macht keinen Schaden, sondern baut einen Erdhügel auf: Deckung vor dir oder einen Gegner eingraben.' },
     ball: { name: 'Ball', radius: 30, damage: 40, ammo: 3, drag: 1.1, roll: true, desc: 'Rollt nach dem Aufprall den Hang hinunter, prallt an steilen Wänden ab und fliegt über Klippen. Explodiert, wenn er liegen bleibt oder einen Panzer berührt – ideal für Gegner in Mulden.' },
-    drill: { name: 'Bohrer', radius: 32, damage: 45, ammo: 0, drag: 0.8, drill: 90, desc: 'Gräbt sich nach dem Aufprall bis zu 90 px weiter durch die Erde und explodiert dann – trifft Gegner hinter Hügeln oder unter Erdhaufen.' },
+    drill: { name: 'Bohrer', radius: 32, damage: 45, ammo: 0, drag: 0.8, drill: 150, desc: 'Gräbt sich nach dem Aufprall bis zu 150 px weiter durch die Erde. Mit Annäherungszünder: explodiert, sobald er beim Graben näher als 28 px an einen gegnerischen Panzer kommt, sonst am Ende der Strecke – trifft Gegner hinter Hügeln oder unter Erdhaufen.' },
     cluster: { name: 'Splitterbombe', radius: 20, damage: 20, ammo: 0, drag: 1, cluster: { count: 5, spread: 1.1 }, desc: 'Zerfällt am höchsten Punkt der Flugbahn in 5 Splitter (je 18 Schaden, Krater 18 px), die sich auffächern.' },
     nuke: { name: 'Atombombe', radius: 115, damage: 95, ammo: 0, drag: 0.5, desc: 'Riesiger Krater und fast tödlicher Schaden im ganzen Umkreis; bricht viel Boden weg (Fallschaden). Kaum windanfällig, sehr teuer.' },
     bomblet: { name: 'Splitter', radius: 18, damage: 18, ammo: 0, drag: 1.3 }, // spawned by cluster only
@@ -282,6 +283,11 @@
           drilled += DRILL_SPEED * dt;
           if (x < 0 || x >= W || y >= H - 2) return impact();
           if (hitsTank(tanks, shooterId, x, y, t)) return impact();
+          // proximity fuse: otherwise the drill would often dig right past or under the target
+          for (const tank of tanks) {
+            if (!tank.alive || tank.id === shooterId) continue;
+            if (Math.hypot(x - tank.x, y - (tank.y - 6)) < DRILL_FUSE) return impact();
+          }
           // explode when the drill comes out into the open air or has dug far enough
           if (y < terrain[Math.floor(x)] - 3 || drilled >= weapon.drill) return impact();
         } else {
@@ -395,7 +401,7 @@
   return {
     W, H, GRAVITY, MAX_WIND, SHIELD_RADIUS, SHIELD_HP, TANK_RADIUS, BARREL, TURRET_Y, ANIM_SPEED, TURN_SECONDS,
     SHOP_SECONDS, ROUND_OPTIONS, DAMAGE_REACH, DAMAGE_FALLOFF, FALL_MIN, FALL_DIV, FALL_MAX, BASE_HP, BASE_MAX_POWER, MAX_PLAYERS, COLORS, WEAPONS, WEAPON_ORDER, SHOP_ITEMS, UPGRADES, REWARDS,
-    ARMOR_REDUCTION, WIND_DRIFT, ROUND_FUEL, CLIMB, TELEPORT_MIN_DISTANCE, climbing, newInventory, maxHp, damageFactor, maxPower, shieldHp, fallFactor,
+    ARMOR_REDUCTION, WIND_DRIFT, DRILL_FUSE, ROUND_FUEL, CLIMB, TELEPORT_MIN_DISTANCE, climbing, newInventory, maxHp, damageFactor, maxPower, shieldHp, fallFactor,
     generateTerrain, placeTanks, carve, addDirt, applyCrater, barrelTip, simulateShot, fireShells,
     explosionDamage, settleTanks,
   };

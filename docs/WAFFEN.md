@@ -30,7 +30,7 @@ zeigt dieselben Werte.
 - **Dreierfächer:** Drei leichte Geschosse im Fächer (−5°, 0°, +5°). Gut gegen weit verteilte oder schwer zu treffende Ziele; stark windanfällig.
 - **Erdklumpen:** Macht keinen Schaden, sondern baut einen Erdhügel auf: Deckung vor dir oder einen Gegner eingraben.
 - **Ball:** Rollt nach dem Aufprall den Hang hinunter, prallt an steilen Wänden ab und fliegt über Klippen. Explodiert, wenn er liegen bleibt oder einen Panzer berührt – ideal für Gegner in Mulden.
-- **Bohrer:** Gräbt sich nach dem Aufprall bis zu 90 px weiter durch die Erde und explodiert dann – trifft Gegner hinter Hügeln oder unter Erdhaufen.
+- **Bohrer:** Gräbt sich nach dem Aufprall bis zu 150 px weiter durch die Erde. Mit Annäherungszünder: explodiert, sobald er beim Graben näher als 28 px an einen gegnerischen Panzer kommt, sonst am Ende der Strecke – trifft Gegner hinter Hügeln oder unter Erdhaufen.
 - **Splitterbombe:** Zerfällt am höchsten Punkt der Flugbahn in 5 Splitter (je 18 Schaden, Krater 18 px), die sich auffächern.
 - **Atombombe:** Riesiger Krater und fast tödlicher Schaden im ganzen Umkreis; bricht viel Boden weg (Fallschaden). Kaum windanfällig, sehr teuer.
 
@@ -73,7 +73,7 @@ tatsächlich erlittenen Schaden, an einem gepanzerten Panzer verdient er also we
 ## Tipps
 
 - **Gegner in einer Mulde:** Der Ball rollt den Hang hinunter und explodiert am tiefsten Punkt.
-- **Gegner hinter einem Hügel:** Der Bohrer gräbt sich bis zu 90 px durch die Erde.
+- **Gegner hinter einem Hügel:** Der Bohrer gräbt sich bis zu 150 px durch die Erde und zündet, sobald er nah an einen Gegner kommt.
 - **Gegner mit Schild:** Mehrere kleine Treffer (Dreierfächer, Splitterbombe) bauen den Schild ab; danach mit einer starken Waffe nachlegen.
 - **Selbst in Gefahr:** Ein Erdklumpen vor dem eigenen Panzer gibt Deckung; ein Schild schützt, kostet aber den Zug.
   Ein Teleport bringt dich aus einem tiefen Krater oder aus der Schusslinie.

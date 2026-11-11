@@ -31,7 +31,7 @@ Auf dem Handy über Schieberegler und Buttons.
 | Dreierfächer | drei Geschosse im Fächer | 3 |
 | Erdklumpen | baut Gelände auf (Deckung / Gegner eingraben) | 2 |
 | Ball | rollt nach dem Aufprall den Hang hinunter, prallt an steilen Wänden ab und explodiert, wenn er liegen bleibt oder einen Panzer berührt | 3 |
-| Bohrer | gräbt sich nach dem Aufprall bis zu 90 px durch die Erde und explodiert dann | nur im Shop |
+| Bohrer | gräbt sich nach dem Aufprall bis zu 150 px durch die Erde; Annäherungszünder: explodiert, sobald er näher als 28 px an einen Gegner kommt | nur im Shop |
 | Splitterbombe | zerfällt am höchsten Punkt der Flugbahn in 5 Splitter | nur im Shop |
 | Atombombe | riesiger Krater (Radius 115 px), bis zu 95 Schaden im ganzen Umkreis, kaum vom Wind abgetrieben | nur im Shop (280) |
 
