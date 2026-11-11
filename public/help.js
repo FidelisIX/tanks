@@ -30,6 +30,8 @@ const Help = (() => {
     return Object.entries(P.UPGRADES)
       .map(([k, u]) => `<tr><td class="h-name">${ICONS[k] || ''}<span><b>${u.name}</b></span></td>
         <td>${u.desc}${k === 'shock' ? ` (Stufe ${u.prices.length} = kein Fallschaden)` : ''}${
+          k === 'climber' ? ` (Stufe 1: Steigung bis ${P.CLIMB[1].maxSlope} : 1, halber Aufschlag bergauf; Stufe 2: bis ${P.CLIMB[2].maxSlope} : 1, kein Aufschlag)` : ''
+        }${
           k === 'armor' ? ` (höchstens −${Math.round(P.ARMOR_REDUCTION * u.prices.length * 100)} %; wirkt erst auf den Schaden, der durch den Schild kommt; nicht bei Fallschaden)` : ''
         }</td>
         <td>${u.prices.length}</td><td>${u.prices.join(' / ')}</td></tr>`)
@@ -59,9 +61,15 @@ const Help = (() => {
           den Schaden ab, bis seine Punkte aufgebraucht sind. Dein eigenes Geschoss fliegt durch deinen Schild.
           Das Aktivieren kostet den Zug. Kein Schutz vor Fallschaden.</td>
           <td>${inv.shields} zum Start</td><td>${P.SHOP_ITEMS.shield.price}</td></tr>
+        <tr><td class="h-name">${ICONS.teleport}<span><b>Teleport</b><small>Taste T</small></span></td>
+          <td>Im eigenen Zug eine Stelle auf der Karte anklicken; der Panzer springt dorthin. Nicht näher als
+          ${P.TELEPORT_MIN_DISTANCE} px an einen anderen Panzer. Kostet den Zug.</td>
+          <td>nur Shop</td><td>${P.SHOP_ITEMS.teleport.price}</td></tr>
         <tr><td class="h-name">${ICONS.fuel}<span><b>Treibstoff</b><small>Tasten A/D, ◀ ▶</small></span></td>
-          <td>Fahren im eigenen Zug kostet 1 Treibstoff pro Pixel. Steile Wände und Klippen sind nicht befahrbar.</td>
-          <td>${inv.fuel} zum Start</td><td>+${P.SHOP_ITEMS.fuel.qty} für ${P.SHOP_ITEMS.fuel.price}</td></tr>
+          <td>Zu Beginn jeder Runde ${P.ROUND_FUEL}; Rest verfällt am Rundenende. Fahren kostet 1 pro Pixel, bergauf zusätzlich
+          ${P.CLIMB[0].uphillCost} pro Pixel Höhe. Ohne Kletterketten schafft der Panzer Steigungen bis ${String(P.CLIMB[0].maxSlope).replace('.', ',')} : 1;
+          von Klippen fährt er nicht hinunter.</td>
+          <td>${P.ROUND_FUEL} pro Runde</td><td>+${P.SHOP_ITEMS.fuel.qty} für ${P.SHOP_ITEMS.fuel.price} (nächste Runde)</td></tr>
       </table></div>
 
       <h3>Upgrades <small class="hint">(gelten für das ganze Match)</small></h3>

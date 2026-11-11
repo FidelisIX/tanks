@@ -158,6 +158,7 @@ function publicTanks(room) {
     id: t.id, name: t.name, color: t.color, x: t.x, y: t.y, hp: t.hp, maxHp: t.maxHp, alive: t.alive,
     angle: t.angle, power: t.power, maxPower: t.maxPower, weapon: t.weapon, ammo: t.ammo,
     shield: t.shield, shieldMax: t.shieldMax, shieldLeft: t.inv.shields, fuel: t.inv.fuel,
+    teleports: t.inv.teleports || 0, climber: t.inv.upgrades.climber || 0,
   }));
 }
 
@@ -313,7 +314,10 @@ function endRound(room, winner) {
 function openShop(room, ms = P.SHOP_SECONDS * 1000) {
   room.state = 'shop';
   room.shopDeadline = Date.now() + ms;
-  for (const p of room.players) p.ready = false;
+  for (const p of room.players) {
+    p.ready = false;
+    p.inv.fuel = P.ROUND_FUEL; // refilled for the next round; fuel bought in the shop comes on top
+  }
   for (const b of room.players.filter((p) => p.isBot)) botShop(room, b);
   clearTimeout(room.shopTimer);
   room.shopTimer = setTimeout(() => startRound(room), ms);
@@ -329,16 +333,17 @@ function buy(room, player, msg) {
   if (msg.upgrade) {
     const u = P.UPGRADES[msg.upgrade];
     if (!u) return false;
-    const level = player.inv.upgrades[msg.upgrade];
+    const level = player.inv.upgrades[msg.upgrade] || 0; // missing in inventories from older backups
     const price = u.prices[level];
     if (price === undefined || player.money < price) return false;
     player.money -= price;
-    player.inv.upgrades[msg.upgrade]++;
+    player.inv.upgrades[msg.upgrade] = level + 1;
   } else {
     const item = P.SHOP_ITEMS[msg.item];
     if (!item || player.money < item.price) return false;
     player.money -= item.price;
     if (msg.item === 'shield') player.inv.shields += item.qty;
+    else if (msg.item === 'teleport') player.inv.teleports = (player.inv.teleports || 0) + item.qty;
     else if (msg.item === 'fuel') player.inv.fuel += item.qty;
     else player.inv.ammo[msg.item] += item.qty;
   }
@@ -480,18 +485,38 @@ function raiseShield(room, tank) {
   setTurnTimer(room, 1500);
 }
 
-// Driving costs 1 fuel per pixel; tanks cannot climb walls or drive off cliffs.
+// Teleporting uses up the turn. The target must be on the map and not right next to another tank.
+function teleport(room, tank, x) {
+  const g = room.game;
+  if (!(tank.inv.teleports > 0)) return;
+  x = Math.round(Number(x));
+  if (!Number.isFinite(x) || x < 15 || x > P.W - 15) return;
+  if (g.tanks.some((t) => t.alive && t.id !== tank.id && Math.abs(t.x - x) < P.TELEPORT_MIN_DISTANCE)) return;
+  tank.inv.teleports--;
+  const from = { x: tank.x, y: tank.y };
+  tank.x = x;
+  tank.y = g.terrain[x];
+  g.phase = 'anim';
+  broadcast(room, { type: 'teleport', id: tank.id, from, to: { x: tank.x, y: tank.y }, tanks: publicTanks(room) });
+  setTurnTimer(room, 1500);
+}
+
+// Driving costs 1 fuel per pixel plus extra fuel per pixel of climbing; how steep a tank can
+// climb and how much the climb costs depend on the climbing tracks. No driving off cliffs.
 const MOVE_STEP = 2;
 function move(room, tank, dir) {
   const g = room.game;
-  if (tank.inv.fuel < MOVE_STEP) return;
+  const climb = P.climbing(tank.inv);
   const nx = Math.max(15, Math.min(P.W - 15, tank.x + Math.sign(dir) * MOVE_STEP));
   if (nx === tank.x) return;
   const ny = g.terrain[nx];
-  if (tank.y - ny > 2.5 * MOVE_STEP || ny - tank.y > 4 * MOVE_STEP) return;
+  const rise = tank.y - ny; // > 0 uphill
+  if (rise > climb.maxSlope * MOVE_STEP || -rise > 4 * MOVE_STEP) return;
+  const cost = MOVE_STEP + Math.max(0, rise) * climb.uphillCost;
+  if (tank.inv.fuel < cost) return;
   tank.x = nx;
   tank.y = ny;
-  tank.inv.fuel -= MOVE_STEP;
+  tank.inv.fuel = Math.round((tank.inv.fuel - cost) * 10) / 10;
   broadcast(room, { type: 'move', id: tank.id, x: tank.x, y: tank.y, fuel: tank.inv.fuel });
 }
 
@@ -904,6 +929,9 @@ wss.on('connection', (ws) => {
         break;
       case 'shield':
         if (myTurn(room)) raiseShield(room, room.game.tanks[room.game.turnIdx]);
+        break;
+      case 'teleport':
+        if (myTurn(room)) teleport(room, room.game.tanks[room.game.turnIdx], msg.x);
         break;
       case 'move': {
         if (!myTurn(room)) return;

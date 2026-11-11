@@ -18,7 +18,7 @@ Während des Spiels zeigt die Anzeigetafel über der Spielfläche für jeden Pan
 laufenden Runde, Gesamtpunkte, Geld und Treibstoff. Oben stehen, wer dran ist, die Runde, der Wind (Pfeil: Länge =
 Stärke, Richtung = Windrichtung) und die verbleibende Zugzeit.
 
-**Steuerung:** ←/→ Winkel · ↑/↓ Kraft · 1–8 Waffe · S Schild · A/D fahren · Leertaste Feuer (Shift für feine Schritte) · H Hilfe.
+**Steuerung:** ←/→ Winkel · ↑/↓ Kraft · 1–8 Waffe · S Schild · T Teleport · A/D fahren · Leertaste Feuer (Shift für feine Schritte) · H Hilfe.
 
 Alle Werte zu Waffen, Schild und Upgrades stehen in der **Hilfe im Spiel** (Knopf „?“, Taste H, Link im Menü und im Shop)
 und in [docs/WAFFEN.md](docs/WAFFEN.md).
@@ -43,7 +43,10 @@ Die Munitionsangaben gelten für den Start eines Matches. Was übrig bleibt, nim
 
 **Fallschaden:** Bricht der Boden unter einem Panzer weg, fällt er. Ab 15 px Fallhöhe gibt es Schaden (Fallhöhe ÷ 6, höchstens 30). Er wird als „Sturz -X“ angezeigt.
 
-**Fahren:** Im eigenen Zug mit A/D oder ◀ ▶. Das kostet 1 Treibstoff pro Pixel (100 zum Start). Steile Wände und Klippen sind nicht befahrbar.
+**Fahren:** Im eigenen Zug mit A/D oder ◀ ▶. Zu Beginn jeder Runde gibt es 300 Treibstoff; Fahren kostet 1 pro Pixel, bergauf etwas mehr.
+Zu steile Hänge und Klippen sind nicht befahrbar; die Kletterketten (Upgrade) schaffen steilere Hänge.
+
+**Teleport** (Taste T, im Shop): im eigenen Zug eine Stelle auf der Karte anklicken und dorthin springen. Kostet den Zug.
 
 Jeder Zug hat 40 Sekunden.
 
@@ -59,14 +62,16 @@ Jeder Zug hat 40 Sekunden.
 Punkte sind gleichzeitig Geld. Für die Rangliste zählt alles, was man insgesamt verdient hat, auch wenn man es ausgibt.
 Nach jeder Runde öffnet sich der Shop für alle gleichzeitig, für 30 Sekunden oder bis alle auf „Fertig“ klicken:
 
-- **Munition:** Schwere Bombe 40, Dreierfächer 35, Erdklumpen 25, Ball 35, Bohrer 50, Splitterbombe 60, Atombombe 280, Schild 60, Treibstoff +60 für 20
+- **Munition und Ausrüstung:** Schwere Bombe 28, Dreierfächer 25, Erdklumpen 18, Ball 25, Bohrer 35, Splitterbombe 42, Atombombe 140, Schild 42,
+  Teleport 50, Treibstoff +100 für 14 (gilt für die nächste Runde)
 - **Dauerhafte Upgrades** (gelten für das ganze Match):
-  - Panzerung: −10 % Explosionsschaden pro Stufe (höchstens −30 %), 3 Stufen, 80/120/160. Ein aktiver Schild fängt zuerst ab;
+  - Panzerung: −10 % Explosionsschaden pro Stufe (höchstens −30 %), 3 Stufen, 56/84/112. Ein aktiver Schild fängt zuerst ab;
     die Panzerung verringert nur, was durchkommt. Alle Panzer haben immer 100 Lebenspunkte;
     so bekommt der Gegner für einen gepanzerten Panzer nicht mehr Punkte, sondern weniger.
-  - Schildverstärker: +30 Schildpunkte, 70/110
-  - Stoßdämpfer: −50 % Fallschaden pro Stufe, 60/90
-  - Turbo-Kanone: +10 max. Kraft, 70/110
+  - Schildverstärker: +30 Schildpunkte, 49/77
+  - Stoßdämpfer: −50 % Fallschaden pro Stufe, 42/63
+  - Turbo-Kanone: +10 max. Kraft, 49/77
+  - Kletterketten: steilere Hänge und weniger Verbrauch bergauf, 2 Stufen, 50/80
 
 ### Raum und Gastgeber
 

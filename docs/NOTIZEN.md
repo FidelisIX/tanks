@@ -27,8 +27,8 @@ render.yaml          Render-Blueprint
   (`WEAPONS`, `SHOP_ITEMS`, `UPGRADES`, `REWARDS`, Konstanten oben). Die Werte sind geschätzt und noch nicht mit
   echten Spielern ausprobiert.
 - Die **Hilfe im Spiel** (`public/help.js`) erzeugt ihre Tabellen aus `shared/physics.js` (auch die Waffentexte `desc`)
-  und ist damit immer aktuell. `docs/WAFFEN.md` wurde am 2026-10-31 aus denselben Werten erzeugt und muss nach
-  Balancing-Änderungen von Hand nachgezogen werden.
+  und ist damit immer aktuell. `docs/WAFFEN.md` wird mit `node scripts/build-waffen-doc.js` aus denselben Werten erzeugt;
+  nach Balancing-Änderungen neu erzeugen.
 - Zeitkonstanten (Wiederverbindung 60 s, Host-Übergabe 15 s, Countdown 5 s, getrennter Spieler 8 s pro Zug)
   stehen oben in `server.js`.
 

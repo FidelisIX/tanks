@@ -23,6 +23,8 @@
   let shopDeadline = 0;
   let driveTimer = null;
   let shakeUntil = 0;
+  let targeting = false; // choosing a teleport target
+  let hoverX = null;
   let countdownEnd = 0;
   let lastMsgAt = 0;
   let reconnectUntil = 0;
@@ -203,7 +205,7 @@
       case 'move': {
         const t = tankById(msg.id);
         if (t) Object.assign(t, { x: msg.x, y: msg.y, fuel: msg.fuel });
-        if (msg.id === myId) $('fuel').textContent = `⛽ ${msg.fuel}`;
+        if (msg.id === myId) $('fuel').textContent = `⛽ ${Math.floor(msg.fuel)}`;
         renderScoreboard();
         break;
       }
@@ -218,6 +220,17 @@
       case 'tanks':
         tanks = msg.tanks;
         break;
+      case 'teleport': {
+        tanks = msg.tanks;
+        phase = 'anim';
+        for (const pt of [msg.from, msg.to]) effects.push({ teleport: true, x: pt.x, y: pt.y - 8, age: 0 });
+        const t = tankById(msg.id);
+        if (t) floaters.push({ x: msg.to.x, y: msg.to.y - 50, text: 'Teleport!', age: 0, color: '#c4b5fd' });
+        sound('shield');
+        updateControls();
+        renderScoreboard();
+        break;
+      }
       case 'shield': {
         tanks = msg.tanks;
         phase = 'anim';
@@ -349,7 +362,7 @@
     if (room.state === 'shop') {
       const m = me();
       const inv = m.inv;
-      const owned = (k) => (k === 'shield' ? inv.shields : k === 'fuel' ? inv.fuel : inv.ammo[k]);
+      const owned = (k) => (k === 'shield' ? inv.shields : k === 'fuel' ? Math.floor(inv.fuel) : k === 'teleport' ? inv.teleports || 0 : inv.ammo[k]);
       html += `<div class="shop-head"><b>Shop</b><span>💰 ${m.money}</span><button class="link" data-help-open>Was bringt was?</button><span id="shop-timer"></span></div><div class="shop">`;
       for (const [k, it] of Object.entries(P.SHOP_ITEMS)) {
         html += `<button data-buy="${k}" ${m.money < it.price || m.ready ? 'disabled' : ''} title="${esc(it.desc || '')}">
@@ -398,6 +411,7 @@
   }
 
   function applyTurn(msg) {
+    stopTargeting();
     terrain = msg.terrain;
     tanks = msg.tanks;
     currentId = msg.currentId;
@@ -425,7 +439,7 @@
     for (const id of ['angle', 'power', 'btn-fire', 'btn-left', 'btn-right']) $(id).disabled = !mine;
     if (t) {
       $('power').max = t.maxPower;
-      $('fuel').textContent = `⛽ ${t.fuel}`;
+      $('fuel').textContent = `⛽ ${Math.floor(t.fuel)}`;
       $('angle').value = t.angle;
       $('power').value = t.power;
       $('angle-val').textContent = t.angle;
@@ -446,6 +460,9 @@
     $('weapons').innerHTML = weaponNames + `<div class="weapon-row">${$('weapons').innerHTML}
       <button id="btn-shield" class="weapon shield-btn" ${!mine || !t || t.shieldLeft <= 0 ? 'disabled' : ''} title="Schild (Taste S) – kostet den Zug"><span class="key">S</span>${ICONS.shield}<small>×${
         t ? t.shieldLeft : 1
+      }</small></button>
+      <button id="btn-teleport" class="weapon${targeting ? ' active' : ''}" ${!mine || !t || !(t.teleports > 0) ? 'disabled' : ''} title="Teleport (Taste T) – Ziel auf der Karte anklicken, kostet den Zug"><span class="key">T</span>${ICONS.teleport}<small>×${
+        t ? t.teleports || 0 : 0
       }</small></button></div>`;
     const cur = tankById(currentId);
     $('turn-label').innerHTML = cur
@@ -481,7 +498,7 @@
           <div class="sb-hp"><span style="width:${hpPct}%;background:${hpColor}"></span></div>
           <div class="sb-row"><span>${t.alive ? `❤ ${t.hp}/${t.maxHp}` : '💀 zerstört'}</span>${t.shield > 0 ? `<span class="shield">🛡 ${t.shield}</span>` : ''}</div>
           <div class="sb-row"><span>Runde <b>+${t.roundPts || 0}</b></span><span>Gesamt <b>${t.score || 0}</b></span></div>
-          <div class="sb-row muted"><span>💰 ${t.money || 0}</span><span>⛽ ${t.fuel}</span></div>
+          <div class="sb-row muted"><span>💰 ${t.money || 0}</span><span>⛽ ${Math.floor(t.fuel)}</span></div>
         </div>`;
       })
       .join('');
@@ -521,6 +538,27 @@
 
   function drive(dir) {
     if (isMyTurn()) send({ type: 'move', dir });
+  }
+
+  // Teleport: first pick the target on the map, then the server moves the tank.
+  function startTargeting() {
+    const t = myTank();
+    if (!isMyTurn() || !(t.teleports > 0)) return;
+    targeting = !targeting;
+    canvas.classList.toggle('targeting', targeting);
+    updateControls();
+  }
+  function stopTargeting() {
+    if (!targeting) return;
+    targeting = false;
+    canvas.classList.remove('targeting');
+  }
+  function teleportTargetOk(x) {
+    return x >= 15 && x <= P.W - 15 && !tanks.some((t) => t.alive && t.id !== myId && Math.abs(t.x - x) < P.TELEPORT_MIN_DISTANCE);
+  }
+  function canvasX(e) {
+    const r = canvas.getBoundingClientRect();
+    return Math.round(((e.clientX - r.left) / r.width) * P.W);
   }
 
   function raiseShield() {
@@ -654,6 +692,16 @@
     drawEffects();
     drawFloaters();
     drawWindSock();
+    if (targeting) {
+      // hint on the canvas itself, so the page layout does not jump
+      ctx.font = '700 18px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(15,18,24,0.75)';
+      ctx.fillRect(P.W / 2 - 230, 14, 460, 34);
+      ctx.fillStyle = '#c4b5fd';
+      ctx.fillText('Teleport: Ziel auf der Karte anklicken · Esc bricht ab', P.W / 2, 37);
+      if (hoverX !== null) drawTeleportMarker(hoverX);
+    }
     ctx.restore();
 
     if (phase === 'aim' && deadline) {
@@ -810,6 +858,14 @@
       e.age++;
       if (e.nuke) {
         drawNuke(e);
+      } else if (e.teleport) {
+        ctx.strokeStyle = `rgba(196,181,253,${1 - e.age / 30})`;
+        ctx.lineWidth = 3;
+        for (const k of [0.5, 1]) {
+          ctx.beginPath();
+          ctx.ellipse(e.x, e.y, 10 + e.age * k, 4 + e.age * k * 0.4, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
       } else if (e.shieldPulse) {
         ctx.strokeStyle = `rgba(127,216,255,${1 - e.age / 30})`;
         ctx.lineWidth = 3;
@@ -895,6 +951,26 @@
       ctx.fillText(f.text, f.x, f.y - f.age * 0.4);
     }
     ctx.globalAlpha = 1;
+  }
+
+  function drawTeleportMarker(x) {
+    const ok = teleportTargetOk(x) && terrain;
+    const y = terrain ? terrain[Math.max(0, Math.min(P.W - 1, x))] : P.H;
+    ctx.strokeStyle = ok ? '#c4b5fd' : '#e8553b';
+    ctx.setLineDash([6, 6]);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(x, y - 8, 14, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.font = '600 13px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = ok ? '#c4b5fd' : '#e8553b';
+    ctx.fillText(ok ? 'hierhin teleportieren' : 'zu nah an einem Panzer', x, Math.max(20, y - 32));
   }
 
   function drawWindSock() {
@@ -1023,6 +1099,7 @@
   $('power').oninput = (e) => setAim({ power: +e.target.value });
   $('weapons').onclick = (e) => {
     if (e.target.closest('#btn-shield')) return raiseShield();
+    if (e.target.closest('#btn-teleport')) return startTargeting();
     const b = e.target.closest('button[data-w]');
     if (b) setAim({ weapon: b.dataset.w });
   };
@@ -1032,6 +1109,7 @@
     if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
     if (e.key === 'h' || e.key === 'H' || e.key === '?') return Help.isOpen() ? Help.close() : Help.open();
     if (Help.isOpen()) return;
+    if (e.key === 'Escape' && targeting) return stopTargeting(), updateControls();
     const t = myTank();
     if (!isMyTurn()) return;
     const step = e.shiftKey ? 1 : 3;
@@ -1043,6 +1121,8 @@
       case ' ': fire(); break;
       case 's':
       case 'S': raiseShield(); break;
+      case 't':
+      case 'T': startTargeting(); break;
       case 'a':
       case 'A': drive(-1); break;
       case 'd':
@@ -1054,6 +1134,18 @@
       }
     }
     e.preventDefault();
+  });
+
+  canvas.addEventListener('pointermove', (e) => (hoverX = canvasX(e)));
+  canvas.addEventListener('pointerleave', () => (hoverX = null));
+  canvas.addEventListener('click', (e) => {
+    if (!targeting || !isMyTurn()) return;
+    const x = canvasX(e);
+    if (!teleportTargetOk(x)) return;
+    stopTargeting();
+    send({ type: 'teleport', x });
+    phase = 'wait';
+    updateControls();
   });
 
   requestAnimationFrame(draw);

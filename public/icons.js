@@ -52,6 +52,12 @@ const ICONS = (() => {
     fuel: svg(`<path d="M8 8h13l4 4v15a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z" fill="#dc2626" stroke="#7f1d1d" stroke-width="1.3"/>
       <rect x="9" y="4" width="7" height="4" rx="1" fill="#7f1d1d"/>
       <path d="M10 14l10 10M20 14l-10 10" stroke="#fca5a5" stroke-width="1.6"/>`),
+    // two swirls with a dashed jump between them
+    teleport: svg(`<ellipse cx="8" cy="25" rx="6" ry="2.4" fill="none" stroke="#c4b5fd" stroke-width="1.8"/>
+      <ellipse cx="24" cy="25" rx="6" ry="2.4" fill="none" stroke="#c4b5fd" stroke-width="1.8"/>
+      <path d="M8 22C8 10 24 10 24 21" stroke="#e9d5ff" stroke-width="1.8" stroke-dasharray="2.4 2.4" fill="none"/>
+      <path d="M21 18l3 4 3-4" stroke="#e9d5ff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="8" cy="19" r="2" fill="#c4b5fd"/>`),
     // upgrades
     armor: svg(`<path d="M16 3l11 4v8c0 7-5 12-11 14C10 27 5 22 5 15V7z" fill="#64748b" stroke="#1e293b" stroke-width="1.4"/>
       <path d="M16 7l7 2.6V15c0 4.6-3 8-7 9.6z" fill="#94a3b8"/>`),
@@ -60,6 +66,11 @@ const ICONS = (() => {
     shock: svg(`<rect x="11" y="2" width="10" height="5" rx="1.5" fill="#64748b"/>
       <path d="M16 7l6 2.5-12 3 12 3-12 3 12 3-6 2.5" stroke="#f2c230" stroke-width="2.2" fill="none" stroke-linejoin="round"/>
       <rect x="11" y="25" width="10" height="5" rx="1.5" fill="#64748b"/>`),
+    // tank track on a steep slope
+    climber: svg(`<path d="M2 30L30 6v24z" fill="#5d4a2f"/>
+      <g transform="rotate(-40 14 18)"><rect x="5" y="15" width="18" height="6" rx="3" fill="#334155" stroke="#94a3b8" stroke-width="1"/>
+      <circle cx="8.5" cy="18" r="1.6" fill="#94a3b8"/><circle cx="14" cy="18" r="1.6" fill="#94a3b8"/><circle cx="19.5" cy="18" r="1.6" fill="#94a3b8"/>
+      <path d="M7 12h14" stroke="#f2c230" stroke-width="2" stroke-linecap="round"/></g>`),
     cannon: svg(`<rect x="4" y="18" width="14" height="8" rx="2" fill="#64748b"/>
       <path d="M12 19l14-10 2 3-14 10z" fill="#94a3b8" stroke="#334155" stroke-width="1"/>
       <path d="M27 4l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" fill="#f08a24"/>`),

@@ -133,6 +133,7 @@ button.fire {
 .h-name span { display: flex; flex-direction: column; gap: 2px; }
 .h-name small { color: var(--muted); }
 .help-rules { margin: 4px 0 0; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+canvas.targeting { cursor: crosshair; }
 #btn-help { width: 40px; font-weight: 800; font-size: 17px; padding: 8px 0; }
 
 /* turn, wind, scoreboard */

@@ -29,7 +29,14 @@
   const BASE_HP = 100;
   const ARMOR_REDUCTION = 0.1; // explosion damage taken per armor level
   const BASE_MAX_POWER = 100;
-  const START_FUEL = 100;
+  const ROUND_FUEL = 300; // fuel (= px of driving on flat ground) at the start of every round
+  // Climbing: max rise per px driven, and extra fuel per px of rise, per climbing-tracks level
+  const CLIMB = [
+    { maxSlope: 2.5, uphillCost: 1 },
+    { maxSlope: 5, uphillCost: 0.5 },
+    { maxSlope: 12, uphillCost: 0 },
+  ];
+  const TELEPORT_MIN_DISTANCE = 40; // px to the nearest other tank
   const DRILL_SPEED = 2;
   // explosion damage: full at the centre, down to (1 - DAMAGE_FALLOFF) at radius + DAMAGE_REACH
   const DAMAGE_REACH = 10;
@@ -57,29 +64,32 @@
   const WEAPON_ORDER = ['shell', 'heavy', 'triple', 'dirt', 'ball', 'drill', 'cluster', 'nuke'];
 
   // Shop between rounds. Items add to the inventory, upgrades are permanent for the match.
+  // Prices were cut to 70 % (nuke 50 %) after player feedback on 2026-11-11.
   const SHOP_ITEMS = {
-    heavy: { name: 'Schwere Bombe', price: 40, qty: 1 },
-    triple: { name: 'Dreierfächer', price: 35, qty: 1 },
-    dirt: { name: 'Erdklumpen', price: 25, qty: 1 },
-    ball: { name: 'Ball', price: 35, qty: 1 },
-    drill: { name: 'Bohrer', price: 50, qty: 1, desc: 'gräbt sich nach dem Aufprall durch die Erde' },
-    cluster: { name: 'Splitterbombe', price: 60, qty: 1, desc: 'zerfällt am höchsten Punkt in 5 Splitter' },
-    nuke: { name: 'Atombombe', price: 280, qty: 1, desc: 'riesiger Krater, fast tödlich im ganzen Umkreis' },
-    shield: { name: 'Schild', price: 60, qty: 1, desc: 'Energieblase, kostet beim Einsatz den Zug' },
-    fuel: { name: 'Treibstoff', price: 20, qty: 60, desc: 'zum Fahren (A/D)' },
+    heavy: { name: 'Schwere Bombe', price: 28, qty: 1 },
+    triple: { name: 'Dreierfächer', price: 25, qty: 1 },
+    dirt: { name: 'Erdklumpen', price: 18, qty: 1 },
+    ball: { name: 'Ball', price: 25, qty: 1 },
+    drill: { name: 'Bohrer', price: 35, qty: 1, desc: 'gräbt sich nach dem Aufprall durch die Erde' },
+    cluster: { name: 'Splitterbombe', price: 42, qty: 1, desc: 'zerfällt am höchsten Punkt in 5 Splitter' },
+    nuke: { name: 'Atombombe', price: 140, qty: 1, desc: 'riesiger Krater, fast tödlich im ganzen Umkreis' },
+    shield: { name: 'Schild', price: 42, qty: 1, desc: 'Energieblase, kostet beim Einsatz den Zug' },
+    teleport: { name: 'Teleport', price: 50, qty: 1, desc: 'im eigenen Zug an eine angeklickte Stelle springen, kostet den Zug' },
+    fuel: { name: 'Treibstoff', price: 14, qty: 100, desc: 'für die nächste Runde, zusätzlich zu den 300 pro Runde' },
   };
   const UPGRADES = {
-    armor: { name: 'Panzerung', desc: '−10 % Explosionsschaden', prices: [80, 120, 160] },
-    shieldBoost: { name: 'Schildverstärker', desc: '+30 Schildpunkte', prices: [70, 110] },
-    shock: { name: 'Stoßdämpfer', desc: '−50 % Fallschaden', prices: [60, 90] },
-    cannon: { name: 'Turbo-Kanone', desc: '+10 max. Kraft', prices: [70, 110] },
+    armor: { name: 'Panzerung', desc: '−10 % Explosionsschaden', prices: [56, 84, 112] },
+    shieldBoost: { name: 'Schildverstärker', desc: '+30 Schildpunkte', prices: [49, 77] },
+    shock: { name: 'Stoßdämpfer', desc: '−50 % Fallschaden', prices: [42, 63] },
+    cannon: { name: 'Turbo-Kanone', desc: '+10 max. Kraft', prices: [49, 77] },
+    climber: { name: 'Kletterketten', desc: 'steilere Hänge, weniger Verbrauch bergauf', prices: [50, 80] },
   };
   const REWARDS = { perDamage: 1, kill: 50, win: 75, base: 30 };
 
   function newInventory() {
     const ammo = {};
     for (const k of WEAPON_ORDER) ammo[k] = WEAPONS[k].ammo;
-    return { ammo, shields: 1, fuel: START_FUEL, upgrades: { armor: 0, shieldBoost: 0, shock: 0, cannon: 0 } };
+    return { ammo, shields: 1, teleports: 0, fuel: ROUND_FUEL, upgrades: { armor: 0, shieldBoost: 0, shock: 0, cannon: 0, climber: 0 } };
   }
 
   // Armor reduces the explosion damage a tank takes instead of adding hit points, so an
@@ -89,6 +99,9 @@
   }
   function damageFactor(inv) {
     return Math.max(0, 1 - ARMOR_REDUCTION * inv.upgrades.armor);
+  }
+  function climbing(inv) {
+    return CLIMB[Math.min(CLIMB.length - 1, inv.upgrades.climber || 0)];
   }
   function maxPower(inv) {
     return BASE_MAX_POWER + 10 * inv.upgrades.cannon;
@@ -143,9 +156,17 @@
       const j = Math.floor(rng() * (i + 1));
       [xs[i], xs[j]] = [xs[j], xs[i]];
     }
+    // flatten a pad under each tank and blend it into the terrain with ramps, so the pad has
+    // no step at its edges that the tank could not drive over
+    const PAD = 16;
+    const RAMP = 40;
     for (const tx of xs) {
       const y = terrain[tx];
-      for (let x = Math.max(0, tx - 16); x <= Math.min(W - 1, tx + 16); x++) terrain[x] = y;
+      for (let x = Math.max(0, tx - PAD - RAMP); x <= Math.min(W - 1, tx + PAD + RAMP); x++) {
+        const d = Math.abs(x - tx);
+        const k = d <= PAD ? 0 : (d - PAD) / RAMP; // 0 on the pad, 1 at the end of the ramp
+        terrain[x] = Math.round(y + (terrain[x] - y) * k);
+      }
     }
     return xs;
   }
@@ -374,7 +395,7 @@
   return {
     W, H, GRAVITY, MAX_WIND, SHIELD_RADIUS, SHIELD_HP, TANK_RADIUS, BARREL, TURRET_Y, ANIM_SPEED, TURN_SECONDS,
     SHOP_SECONDS, ROUND_OPTIONS, DAMAGE_REACH, DAMAGE_FALLOFF, FALL_MIN, FALL_DIV, FALL_MAX, BASE_HP, BASE_MAX_POWER, MAX_PLAYERS, COLORS, WEAPONS, WEAPON_ORDER, SHOP_ITEMS, UPGRADES, REWARDS,
-    ARMOR_REDUCTION, WIND_DRIFT, newInventory, maxHp, damageFactor, maxPower, shieldHp, fallFactor,
+    ARMOR_REDUCTION, WIND_DRIFT, ROUND_FUEL, CLIMB, TELEPORT_MIN_DISTANCE, climbing, newInventory, maxHp, damageFactor, maxPower, shieldHp, fallFactor,
     generateTerrain, placeTanks, carve, addDirt, applyCrater, barrelTip, simulateShot, fireShells,
     explosionDamage, settleTanks,
   };
