@@ -51,4 +51,4 @@ Vorschlag: die bisherigen Wegwerf-Tests (WebSocket-Bots, Playwright) als `npm te
 | F-031 | Spieler-Feedback: Upgrades/Waffen zu teuer – alles 30 % billiger, Atombombe halber Preis | `b000717` |
 | F-032 | Spieler-Feedback: zu wenig Reichweite beim Fahren – 300 Treibstoff pro Runde statt 100 pro Match | `b000717` |
 | F-033 | Bohrer gräbt weiter: 150 px statt 90 px (90 px war kürzer als die Explosionsradien großer Waffen) | `042d76b` |
-| F-034 | Neue Waffe Tunnelbohrer (Vorschlag des Besitzers, Gegenstück zum Erdklumpen): gräbt bis 150 px einen offenen Graben, kein Explosionsschaden; 2 zum Start, im Shop 18, Taste 9. Echte Tunnel sind im jetzigen Gelände (eine Bodenhöhe pro Spalte) nicht möglich | dieser Commit |
+| F-034 | Neue Waffe Tunnelbohrer (Vorschlag des Besitzers, Gegenstück zum Erdklumpen): gräbt bis 150 px einen offenen Graben, kein Explosionsschaden; 2 zum Start, im Shop 18, Taste 9. Echte Tunnel sind im jetzigen Gelände (eine Bodenhöhe pro Spalte) nicht möglich | `f550abe` |
