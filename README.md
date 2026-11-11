@@ -18,7 +18,7 @@ Während des Spiels zeigt die Anzeigetafel über der Spielfläche für jeden Pan
 laufenden Runde, Gesamtpunkte, Geld und Treibstoff. Oben stehen, wer dran ist, die Runde, der Wind (Pfeil: Länge =
 Stärke, Richtung = Windrichtung) und die verbleibende Zugzeit.
 
-**Steuerung:** ←/→ Winkel · ↑/↓ Kraft · 1–8 Waffe · S Schild · T Teleport · A/D fahren · Leertaste Feuer (Shift für feine Schritte) · H Hilfe.
+**Steuerung:** ←/→ Winkel · ↑/↓ Kraft (mit Shift in feineren Schritten) · 1–8 Waffe · S Schild · T Teleport · A/D fahren · Leertaste Feuer · H Hilfe.
 
 Alle Werte zu Waffen, Schild und Upgrades stehen in der **Hilfe im Spiel** (Knopf „?“, Taste H, Link im Menü und im Shop)
 und in [docs/WAFFEN.md](docs/WAFFEN.md).
