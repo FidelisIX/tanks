@@ -3,6 +3,11 @@
 const ICONS = (() => {
   const svg = (body) => `<svg class="icon" viewBox="0 0 32 32" aria-hidden="true">${body}</svg>`;
   return {
+    // trench digger: a cut through a hill with the digging head at its end
+    trench: svg(`<path d="M1 30V14c4-6 9-9 15-9s11 3 15 9v16z" fill="#8a6a3c" stroke="#5b4426" stroke-width="1.2"/>
+      <path d="M4 15l8 6 9 2" stroke="#1b1f27" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <g transform="rotate(12 23 23)"><path d="M20 20.5h4l4 2.5-4 2.5h-4z" fill="#cbd5e1" stroke="#64748b" stroke-width=".9"/>
+      <path d="M22 20.5v5M24.5 21v4" stroke="#64748b" stroke-width=".9"/></g>`),
     // pointed shell with a copper band
     shell: svg(`<g transform="rotate(-35 16 16)">
       <path d="M16 3c4 3 5 7 5 11v12h-10V14c0-4 1-8 5-11z" fill="#d9c27a" stroke="#8a7432" stroke-width="1.2"/>

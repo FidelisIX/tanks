@@ -15,10 +15,10 @@ const Help = (() => {
     return P.WEAPON_ORDER.map((k, i) => {
       const w = P.WEAPONS[k];
       const shop = P.SHOP_ITEMS[k];
-      let dmg = w.dirt ? '– (baut Erde auf)' : `${w.damage}`;
+      let dmg = w.dirt ? '– (baut Erde auf)' : w.trench ? '– (gräbt Graben)' : `${w.damage}`;
       if (w.spread) dmg = `${w.spread.length} × ${w.damage}`;
       if (w.cluster) dmg = `${w.cluster.count} × ${P.WEAPONS.bomblet.damage}`;
-      const radius = w.cluster ? `${P.WEAPONS.bomblet.radius} px je Splitter` : `${w.radius} px`;
+      const radius = w.cluster ? `${P.WEAPONS.bomblet.radius} px je Splitter` : w.trench ? `Rinne ${w.radius * 2} px breit` : `${w.radius} px`;
       const start = w.ammo === -1 ? '∞' : w.ammo === 0 ? 'nur Shop' : w.ammo;
       return `<tr>
         <td class="h-name">${ICONS[k] || ''}<span><b>${i + 1}. ${w.name}</b><small>${w.desc || ''}</small></span></td>

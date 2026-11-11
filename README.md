@@ -18,7 +18,7 @@ Während des Spiels zeigt die Anzeigetafel über der Spielfläche für jeden Pan
 laufenden Runde, Gesamtpunkte, Geld und Treibstoff. Oben stehen, wer dran ist, die Runde, der Wind (Pfeil: Länge =
 Stärke, Richtung = Windrichtung) und die verbleibende Zugzeit.
 
-**Steuerung:** ←/→ Winkel · ↑/↓ Kraft (mit Shift in feineren Schritten) · 1–8 Waffe · S Schild · T Teleport · A/D fahren · Leertaste Feuer · H Hilfe.
+**Steuerung:** ←/→ Winkel · ↑/↓ Kraft (mit Shift in feineren Schritten) · 1–9 Waffe · S Schild · T Teleport · A/D fahren · Leertaste Feuer · H Hilfe.
 
 Alle Werte zu Waffen, Schild und Upgrades stehen in der **Hilfe im Spiel** (Knopf „?“, Taste H, Link im Menü und im Shop)
 und in [docs/WAFFEN.md](docs/WAFFEN.md).
@@ -33,6 +33,7 @@ Auf dem Handy über Schieberegler und Buttons.
 | Ball | rollt nach dem Aufprall den Hang hinunter, prallt an steilen Wänden ab und explodiert, wenn er liegen bleibt oder einen Panzer berührt | 3 |
 | Bohrer | gräbt sich nach dem Aufprall bis zu 150 px durch die Erde; Annäherungszünder: explodiert, sobald er näher als 28 px an einen Gegner kommt | nur im Shop |
 | Splitterbombe | zerfällt am höchsten Punkt der Flugbahn in 5 Splitter | nur im Shop |
+| Tunnelbohrer | Gegenstück zum Erdklumpen: gräbt sich bis zu 150 px durch die Erde und hinterlässt einen offenen Graben; kein Explosionsschaden, aber Fallschaden für Panzer, deren Boden wegfällt | 2 |
 | Atombombe | riesiger Krater (Radius 115 px), bis zu 95 Schaden im ganzen Umkreis, kaum vom Wind abgetrieben | nur im Shop (280) |
 
 Die Munitionsangaben gelten für den Start eines Matches. Was übrig bleibt, nimmt man in die nächste Runde mit.

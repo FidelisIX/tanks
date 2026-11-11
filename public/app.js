@@ -586,10 +586,14 @@
         anim.applied[i] = true;
         P.applyCrater(terrain, s.explosion);
         const nuke = s.w === 'nuke';
-        effects.push({ x: s.explosion.x, y: s.explosion.y, r: s.explosion.r, dirt: s.explosion.dirt, nuke, age: 0 });
+        // trench digger: dust along the trench instead of a fireball
+        const earthy = s.explosion.dirt || !!s.explosion.dig;
+        if (s.explosion.dig) {
+          for (const [dx, dy] of s.explosion.dig.filter((_, i) => i % 4 === 0)) spawnDebris({ x: dx, y: dy, dirt: true });
+        } else effects.push({ x: s.explosion.x, y: s.explosion.y, r: s.explosion.r, dirt: s.explosion.dirt, nuke, age: 0 });
         if (nuke) shakeUntil = performance.now() + 900;
-        spawnDebris(s.explosion);
-        sound(s.explosion.dirt ? 'thud' : 'boom', nuke ? 250 : s.explosion.r);
+        if (!s.explosion.dig) spawnDebris(s.explosion);
+        sound(earthy ? 'thud' : 'boom', nuke ? 250 : s.explosion.r);
       }
     });
     if (anim.tick >= anim.endTick) finishAnim();

@@ -16,6 +16,7 @@ zeigt dieselben Werte.
 | 6 | Bohrer | 45 | 32 px | gering (0,8) | nur Shop | 35 |
 | 7 | Splitterbombe | 5 × 18 | 18 px je Splitter | normal (1) | nur Shop | 42 |
 | 8 | Atombombe | 95 | 115 px | sehr gering (0,5) | nur Shop | 140 |
+| 9 | Tunnelbohrer | – (gräbt Graben) | Rinne 28 px breit | gering (0,8) | 2 | 18 |
 
 - **Schaden** ist der Wert bei einem Treffer im Zentrum der Explosion. Er nimmt mit dem Abstand linear ab, bis auf
   40 % am Rand (Krater-Radius + 10 px). Weiter weg gibt es keinen Schaden.
@@ -33,6 +34,7 @@ zeigt dieselben Werte.
 - **Bohrer:** Gräbt sich nach dem Aufprall bis zu 150 px weiter durch die Erde. Mit Annäherungszünder: explodiert, sobald er beim Graben näher als 28 px an einen gegnerischen Panzer kommt, sonst am Ende der Strecke – trifft Gegner hinter Hügeln oder unter Erdhaufen.
 - **Splitterbombe:** Zerfällt am höchsten Punkt der Flugbahn in 5 Splitter (je 18 Schaden, Krater 18 px), die sich auffächern.
 - **Atombombe:** Riesiger Krater und fast tödlicher Schaden im ganzen Umkreis; bricht viel Boden weg (Fallschaden). Kaum windanfällig, sehr teuer.
+- **Tunnelbohrer:** Gegenstück zum Erdklumpen: gräbt sich nach dem Aufprall bis zu 150 px durch die Erde und nimmt dabei die Erde entlang seines Weges weg (Rinne 28 px breit). Weil die Erde darüber nachsackt, entsteht ein offener Graben. Kein Explosionsschaden – aber wer den Boden verliert, bekommt Fallschaden.
 
 ## Schild, Teleport, Treibstoff
 

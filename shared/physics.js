@@ -59,10 +59,11 @@
     ball: { name: 'Ball', radius: 30, damage: 40, ammo: 3, drag: 1.1, roll: true, desc: 'Rollt nach dem Aufprall den Hang hinunter, prallt an steilen Wänden ab und fliegt über Klippen. Explodiert, wenn er liegen bleibt oder einen Panzer berührt – ideal für Gegner in Mulden.' },
     drill: { name: 'Bohrer', radius: 32, damage: 45, ammo: 0, drag: 0.8, drill: 150, desc: 'Gräbt sich nach dem Aufprall bis zu 150 px weiter durch die Erde. Mit Annäherungszünder: explodiert, sobald er beim Graben näher als 28 px an einen gegnerischen Panzer kommt, sonst am Ende der Strecke – trifft Gegner hinter Hügeln oder unter Erdhaufen.' },
     cluster: { name: 'Splitterbombe', radius: 20, damage: 20, ammo: 0, drag: 1, cluster: { count: 5, spread: 1.1 }, desc: 'Zerfällt am höchsten Punkt der Flugbahn in 5 Splitter (je 18 Schaden, Krater 18 px), die sich auffächern.' },
+    trench: { name: 'Tunnelbohrer', radius: 14, damage: 0, ammo: 2, drag: 0.8, drill: 150, trench: true, desc: 'Gegenstück zum Erdklumpen: gräbt sich nach dem Aufprall bis zu 150 px durch die Erde und nimmt dabei die Erde entlang seines Weges weg (Rinne 28 px breit). Weil die Erde darüber nachsackt, entsteht ein offener Graben. Kein Explosionsschaden – aber wer den Boden verliert, bekommt Fallschaden.' },
     nuke: { name: 'Atombombe', radius: 115, damage: 95, ammo: 0, drag: 0.5, desc: 'Riesiger Krater und fast tödlicher Schaden im ganzen Umkreis; bricht viel Boden weg (Fallschaden). Kaum windanfällig, sehr teuer.' },
     bomblet: { name: 'Splitter', radius: 18, damage: 18, ammo: 0, drag: 1.3 }, // spawned by cluster only
   };
-  const WEAPON_ORDER = ['shell', 'heavy', 'triple', 'dirt', 'ball', 'drill', 'cluster', 'nuke'];
+  const WEAPON_ORDER = ['shell', 'heavy', 'triple', 'dirt', 'ball', 'drill', 'cluster', 'nuke', 'trench'];
 
   // Shop between rounds. Items add to the inventory, upgrades are permanent for the match.
   // Prices were cut to 70 % (nuke 50 %) after player feedback on 2026-11-11.
@@ -75,6 +76,7 @@
     cluster: { name: 'Splitterbombe', price: 42, qty: 1, desc: 'zerfällt am höchsten Punkt in 5 Splitter' },
     nuke: { name: 'Atombombe', price: 140, qty: 1, desc: 'riesiger Krater, fast tödlich im ganzen Umkreis' },
     shield: { name: 'Schild', price: 42, qty: 1, desc: 'Energieblase, kostet beim Einsatz den Zug' },
+    trench: { name: 'Tunnelbohrer', price: 18, qty: 1, desc: 'gräbt einen Graben durch die Erde, ohne Explosionsschaden' },
     teleport: { name: 'Teleport', price: 50, qty: 1, desc: 'im eigenen Zug an eine angeklickte Stelle springen, kostet den Zug' },
     fuel: { name: 'Treibstoff', price: 14, qty: 100, desc: 'für die nächste Runde, zusätzlich zu den 300 pro Runde' },
   };
@@ -194,6 +196,7 @@
 
   function applyCrater(terrain, ex) {
     if (ex.dirt) addDirt(terrain, ex.x, ex.y, ex.r);
+    else if (ex.dig) for (const [x, y] of ex.dig) carve(terrain, x, y, ex.r); // trench along the drill path
     else carve(terrain, ex.x, ex.y, ex.r);
   }
 
@@ -242,9 +245,10 @@
     let dir = null;
     const dt = 1 / SUBSTEPS;
     const path = [[round1(x), round1(y)]];
+    let entry = -1; // path index where the projectile started digging
     const impact = () => {
       path.push([round1(x), round1(y)]);
-      return { path, impact: { x: round1(x), y: round1(y) } };
+      return { path, entry, impact: { x: round1(x), y: round1(y) } };
     };
 
     for (let t = t0 + 1; t <= MAX_TICKS; t++) {
@@ -275,6 +279,7 @@
               const v = Math.hypot(vx, vy) || 1;
               dir = { x: vx / v, y: vy / v };
               mode = 'drill';
+              entry = path.length - 1;
             } else return impact();
           }
         } else if (mode === 'drill') {
@@ -284,7 +289,8 @@
           if (x < 0 || x >= W || y >= H - 2) return impact();
           if (hitsTank(tanks, shooterId, x, y, t)) return impact();
           // proximity fuse: otherwise the drill would often dig right past or under the target
-          for (const tank of tanks) {
+          // (only for drills that do damage; the trench digger just keeps digging)
+          for (const tank of weapon.damage ? tanks : []) {
             if (!tank.alive || tank.id === shooterId) continue;
             if (Math.hypot(x - tank.x, y - (tank.y - 6)) < DRILL_FUSE) return impact();
           }
@@ -346,7 +352,15 @@
         startTick,
         path: sim.path,
         explosion: sim.impact
-          ? { x: sim.impact.x, y: sim.impact.y, r: WEAPONS[w].radius, dirt: !!WEAPONS[w].dirt, tick: startTick + sim.path.length - 1 }
+          ? {
+              x: sim.impact.x,
+              y: sim.impact.y,
+              r: WEAPONS[w].radius,
+              dirt: !!WEAPONS[w].dirt,
+              tick: startTick + sim.path.length - 1,
+              // trench: points along the dug path, every few px
+              ...(WEAPONS[w].trench && sim.entry >= 0 ? { dig: sim.path.slice(sim.entry).filter((_, i, a) => i % 2 === 0 || i === a.length - 1) } : {}),
+            }
           : null,
       });
     };
