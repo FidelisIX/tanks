@@ -29,8 +29,10 @@ Bots prüfen.
 ### B-014 – Statistik wird nicht in den Branch `statistik` geschrieben
 Nach dem ersten Live-Match (2026-11-11, Raum VHWJ) zeigte die Live-Statistik das Match, im Branch `statistik` kam aber
 nichts an (kein `spiele/2026-11.jsonl`, kein Commit). Lesen klappt (`persistent: true`, `loaded: true`).
-Ursache noch unbekannt; das Render-Log müsste eine Zeile `Statistik nicht gespeichert: …` mit HTTP-Code enthalten.
-Vermutung (unbestätigt): Token hat nur Lesezugriff statt „Contents: Read and write“.
+Testmatch „Claude-Test“ (Raum ZSBD, 2026-11-11 22:28 UTC) bestätigt den Fehler. Render-Log:
+`Statistik nicht gespeichert: GitHub: Speichern fehlgeschlagen (403) {"message":"Resource not accessible by personal access token", …}`
+Ursache: Der Fine-grained Token hat für Contents nur Lese-, keine Schreibrechte. Kein Code-Fehler.
+Lösung beim Besitzer: Token-Berechtigung „Contents“ auf „Read and write“ stellen. Danach mit einem Match erneut prüfen.
 
 ## So gewollt
 
