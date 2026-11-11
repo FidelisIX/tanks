@@ -61,7 +61,7 @@ Stoßdämpfer Stufe 2 bedeutet: kein Fallschaden mehr.
 
 - **Fallschaden:** Bricht der Boden unter einem Panzer weg, fällt er. Ab 15 px Fallhöhe: Fallhöhe ÷ 6, höchstens 30.
   Große Krater unter einem Gegner (Schwere Bombe, Atombombe, Bohrer) bringen deshalb oft zusätzlichen Schaden.
-- **Wind:** Stärke 0–10, wechselt jeden Zug. In der Höhe weht er stärker als am Boden, hohe Bogenschüsse werden also stärker abgetrieben.
+- **Wind:** Stärke 0–10, zu Beginn jeder Runde ausgewürfelt, danach ändert er sich pro Zug um höchstens ±2. In der Höhe weht er stärker als am Boden, hohe Bogenschüsse werden also stärker abgetrieben.
 - **Punkte = Geld:** 1 pro Schadenspunkt am Gegner (auch auf den Schild und Fallschaden durch deinen Krater),
   50 pro Abschuss, 75 für den Rundensieg, 30 Grundbetrag pro Runde. Schaden über die Zerstörung hinaus zählt nicht.
 

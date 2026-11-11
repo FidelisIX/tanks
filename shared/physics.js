@@ -16,6 +16,7 @@
   const SHIELD_RADIUS = 30;
   const SHIELD_HP = 60;
   const MAX_WIND = 10;
+  const WIND_DRIFT = 2; // max change of the wind from one turn to the next
   const TANK_RADIUS = 13;
   const BARREL = 20;
   const TURRET_Y = 10;
@@ -373,7 +374,7 @@
   return {
     W, H, GRAVITY, MAX_WIND, SHIELD_RADIUS, SHIELD_HP, TANK_RADIUS, BARREL, TURRET_Y, ANIM_SPEED, TURN_SECONDS,
     SHOP_SECONDS, ROUND_OPTIONS, DAMAGE_REACH, DAMAGE_FALLOFF, FALL_MIN, FALL_DIV, FALL_MAX, BASE_HP, BASE_MAX_POWER, MAX_PLAYERS, COLORS, WEAPONS, WEAPON_ORDER, SHOP_ITEMS, UPGRADES, REWARDS,
-    ARMOR_REDUCTION, newInventory, maxHp, damageFactor, maxPower, shieldHp, fallFactor,
+    ARMOR_REDUCTION, WIND_DRIFT, newInventory, maxHp, damageFactor, maxPower, shieldHp, fallFactor,
     generateTerrain, placeTanks, carve, addDirt, applyCrater, barrelTip, simulateShot, fireShells,
     explosionDamage, settleTanks,
   };

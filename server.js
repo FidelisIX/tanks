@@ -171,6 +171,13 @@ function randomWind() {
   return crypto.randomInt(-P.MAX_WIND, P.MAX_WIND + 1);
 }
 
+// The wind is rolled at the start of a round and then drifts a little each turn,
+// so players can still read it from one turn to the next.
+function driftWind(wind) {
+  const next = wind + crypto.randomInt(-P.WIND_DRIFT, P.WIND_DRIFT + 1);
+  return Math.max(-P.MAX_WIND, Math.min(P.MAX_WIND, next));
+}
+
 function playerById(room, id) {
   return room.players.find((p) => p.id === id);
 }
@@ -226,7 +233,7 @@ function startRound(room) {
     return makeTank(p, xs[i], terrain);
   });
   room.state = 'playing';
-  room.game = { terrain, tanks, turnIdx: crypto.randomInt(tanks.length) - 1, wind: 0, phase: 'aim', timer: null };
+  room.game = { terrain, tanks, turnIdx: crypto.randomInt(tanks.length) - 1, wind: randomWind(), turns: 0, phase: 'aim', timer: null };
   broadcast(room, roomInfo(room));
   nextTurn(room);
 }
@@ -240,7 +247,8 @@ function nextTurn(room) {
   do g.turnIdx = (g.turnIdx + 1) % g.tanks.length;
   while (!g.tanks[g.turnIdx].alive);
 
-  g.wind = randomWind();
+  g.turns = (g.turns || 0) + 1; // missing in rooms backed up before the wind drift existed
+  if (g.turns > 1) g.wind = driftWind(g.wind);
   g.phase = 'aim';
   g.currentId = g.tanks[g.turnIdx].id;
   const owner = playerById(room, g.currentId);

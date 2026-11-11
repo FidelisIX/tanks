@@ -76,7 +76,7 @@ const Help = (() => {
         <li><b>Fallschaden:</b> Bricht der Boden unter einem Panzer weg, fällt er. Ab ${P.FALL_MIN} px Fallhöhe:
           Fallhöhe ÷ ${P.FALL_DIV}, höchstens ${P.FALL_MAX}. Angezeigt als „Sturz -X“.</li>
         <li><b>Wind:</b> Geschosse haben Luftwiderstand gegenüber der bewegten Luft. In der Höhe weht der Wind stärker als
-          am Boden; leichte Geschosse werden stärker abgetrieben (siehe Windanfälligkeit). Stärke 0–${P.MAX_WIND}, wechselt jeden Zug.</li>
+          am Boden; leichte Geschosse werden stärker abgetrieben (siehe Windanfälligkeit). Stärke 0–${P.MAX_WIND}; zu Beginn jeder Runde ausgewürfelt, danach ändert er sich pro Zug um höchstens ±${P.WIND_DRIFT}.</li>
         <li><b>Punkte = Geld:</b> ${R.perDamage} pro Schadenspunkt am Gegner (auch auf den Schild und Fallschaden durch deinen
           Krater), ${R.kill} pro Abschuss, ${R.win} für den Rundensieg, ${R.base} Grundbetrag pro Runde.</li>
         <li><b>Zugzeit:</b> ${P.TURN_SECONDS} Sekunden. Shop: ${P.SHOP_SECONDS} Sekunden oder bis alle fertig sind.</li>

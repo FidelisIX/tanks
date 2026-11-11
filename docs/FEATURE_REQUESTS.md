@@ -45,3 +45,4 @@ Vorschlag: die bisherigen Wegwerf-Tests (WebSocket-Bots, Playwright) als `npm te
 | F-025 | Atombomben-Symbol als Fliegerbombe statt Oval | `fd8b2e6` |
 | F-026 | Panzerung verringert den erlittenen Schaden (−10 % pro Stufe) statt Lebenspunkte zu erhöhen – sonst bekäme der Gegner mehr Punkte | `fd69aba` |
 | F-027 | Reihenfolge: erst Schild, dann Panzerung (der Schild ist die äußere Blase; die Panzerung verringert nur, was durchkommt) | `b89e432` |
+| F-028 | Spieler-Feedback: Wind wechselt zu oft → wird pro Runde ausgewürfelt und ändert sich pro Zug nur um höchstens ±2 (`WIND_DRIFT`) | dieser Commit |

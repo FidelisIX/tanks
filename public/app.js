@@ -353,7 +353,7 @@
       html += `<div class="shop-head"><b>Shop</b><span>💰 ${m.money}</span><button class="link" data-help-open>Was bringt was?</button><span id="shop-timer"></span></div><div class="shop">`;
       for (const [k, it] of Object.entries(P.SHOP_ITEMS)) {
         html += `<button data-buy="${k}" ${m.money < it.price || m.ready ? 'disabled' : ''} title="${esc(it.desc || '')}">
-          ${ICONS[k] || ''}<span>${it.name}${it.qty > 1 ? ` +${it.qty}` : ''}</span><small>hast ${owned(k)}</small><b>${it.price} 💰</b></button>`;
+          ${ICONS[k] || ''}<span>${it.name}${it.qty > 1 ? ` +${it.qty}` : ''}</span><small>Vorrat: ${owned(k)}</small><b>${it.price} 💰</b></button>`;
       }
       for (const [k, u] of Object.entries(P.UPGRADES)) {
         const lvl = inv.upgrades[k];
