@@ -46,7 +46,7 @@ Vorschlag: die bisherigen Wegwerf-Tests (WebSocket-Bots, Playwright) als `npm te
 | F-026 | Panzerung verringert den erlittenen Schaden (−10 % pro Stufe) statt Lebenspunkte zu erhöhen – sonst bekäme der Gegner mehr Punkte | `fd69aba` |
 | F-027 | Reihenfolge: erst Schild, dann Panzerung (der Schild ist die äußere Blase; die Panzerung verringert nur, was durchkommt) | `b89e432` |
 | F-028 | Spieler-Feedback: Wind wechselt zu oft → wird pro Runde ausgewürfelt und ändert sich pro Zug nur um höchstens ±2 (`WIND_DRIFT`) | `e6f6627` |
-| F-029 | Spieler-Feedback: Teleport als Einmal-Artikel (Ziel anklicken, kostet den Zug) | dieser Commit |
-| F-030 | Spieler-Feedback: Upgrade für besseres Bergauffahren – Kletterketten, 2 Stufen | dieser Commit |
-| F-031 | Spieler-Feedback: Upgrades/Waffen zu teuer – alles 30 % billiger, Atombombe halber Preis | dieser Commit |
-| F-032 | Spieler-Feedback: zu wenig Reichweite beim Fahren – 300 Treibstoff pro Runde statt 100 pro Match | dieser Commit |
+| F-029 | Spieler-Feedback: Teleport als Einmal-Artikel (Ziel anklicken, kostet den Zug) | `b000717` |
+| F-030 | Spieler-Feedback: Upgrade für besseres Bergauffahren – Kletterketten, 2 Stufen | `b000717` |
+| F-031 | Spieler-Feedback: Upgrades/Waffen zu teuer – alles 30 % billiger, Atombombe halber Preis | `b000717` |
+| F-032 | Spieler-Feedback: zu wenig Reichweite beim Fahren – 300 Treibstoff pro Runde statt 100 pro Match | `b000717` |

@@ -44,11 +44,11 @@ Einrichtung: siehe README, Abschnitt „Statistik und Neustarts“.
 Spieler-Feedback „zu wenig Reichweite für Fahren“. Beim Rundenstart wird unter jedem Panzer ein Stück eingeebnet; an dessen
 Rand entstand eine Stufe, die zu steil zum Hinauf- oder zu tief zum Hinunterfahren war. Gemessen auf 200 Karten
 (Fahrregeln des Servers): in 57 % der Fälle nach höchstens 18 px Schluss, Median 16 px. Jetzt geht die Plattform über
-40 px Rampe in das Gelände über: 0 % hängen geblieben, Median 226 px (ohne Kletterketten). Behoben in diesem Commit.
+40 px Rampe in das Gelände über: 0 % hängen geblieben, Median 226 px (ohne Kletterketten). Behoben in `b000717`.
 
 ### B-013 – Treibstoff „verschwindet“
 Spieler-Feedback. Kein Abzug durch Treffer (geprüft), sondern Spielwert: 100 Treibstoff für das ganze Match, beim
-Gedrückthalten nach ~2 s leer. Jetzt 300 pro Runde (F-032). Behoben in diesem Commit.
+Gedrückthalten nach ~2 s leer. Jetzt 300 pro Runde (F-032). Behoben in `b000717`.
 
 ### B-011 – „hast 2“ im Shop ist kein gutes Deutsch
 Spieler-Feedback (2026-11-11). Der Bestand heißt jetzt „Vorrat: 2“. Behoben in `e6f6627`.
