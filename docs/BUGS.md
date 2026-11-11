@@ -26,6 +26,12 @@ zuletzt beigetretenen Tabs übernehmen. Für normale Nutzung (ein Spieler pro Ge
 diese Zeit, auch für andere Räume. Wie lange genau, ist **nicht gemessen**. Bei vielen gleichzeitigen Räumen mit
 Bots prüfen.
 
+### B-015 – Leertaste schießt nicht (nicht nachgestellt)
+Spieler-Feedback (2026-11-11). Test mit Chromium (Playwright): Leertaste schießt nach Beitritt per Klick und per Enter,
+nach Ziehen am Kraft-Regler, nach Waffenwahl und nach Öffnen/Schließen der Hilfe. Noch nicht nachgestellt; nachgefragt
+wurden: eigener Zug ja/nein, Aktion davor, Browser/Gerät, immer oder nur manchmal. Hinweis: Die Leertaste wirkt
+absichtlich nur im eigenen Zug.
+
 ## So gewollt
 
 ### B-006 – Ohne Token sind Statistik und Räume nach einem Neustart weg
