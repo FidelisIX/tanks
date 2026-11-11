@@ -35,7 +35,7 @@ Einrichtung: siehe README, Abschnitt „Statistik und Neustarts“.
 ## Behoben
 
 ### B-011 – „hast 2“ im Shop ist kein gutes Deutsch
-Spieler-Feedback (2026-11-11). Der Bestand heißt jetzt „Vorrat: 2“. Behoben in diesem Commit.
+Spieler-Feedback (2026-11-11). Der Bestand heißt jetzt „Vorrat: 2“. Behoben in `e6f6627`.
 
 ### B-010 – Deploy auf Render bricht nach 18 Minuten mit „Timed Out“ ab
 Render-Log vom 2026-10-31 (Commit `c9b7754`): Build erfolgreich, Server startet um 17:39:15, Render meldet erst um
