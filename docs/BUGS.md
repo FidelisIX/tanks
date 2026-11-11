@@ -40,8 +40,9 @@ Render-Log vom 2026-10-31 (Commit `c9b7754`): Build erfolgreich, Server startet 
 Ursachen: (1) `server.listen(PORT)` ohne Adresse – Node lauscht dann auf `::`; Render verlangt laut Doku
 „must bind to a port on host `0.0.0.0`“ (render.com/docs/web-services#port-binding). (2) `"node": ">=18"` wurde zu
 Node 26.13.0 aufgelöst; die Render-Doku rät zu einer Obergrenze (render.com/docs/node-version).
-Lösung wie im Ortsraten-Repo: Bindung an `HOST || '0.0.0.0'`, Node auf `22.x` festgelegt. Behoben in `8c04db2`;
-bestätigt erst, wenn der nächste Deploy auf Render durchläuft.
+Lösung wie im Ortsraten-Repo: Bindung an `HOST || '0.0.0.0'`, Node auf `22.x` festgelegt. Behoben in `8c04db2`.
+Bestätigt am 2026-11-11: Deploy von `5a4db07` meldet „Your service is live“, Server lauscht auf `0.0.0.0:10000`;
+https://krater-kommando.onrender.com/healthz antwortet mit 200.
 
 ### B-009 – Windpfeil bei „mittel“ und „stark“ gleich lang
 Die Pfeillänge war Stärke × 10 % der Anzeige, begrenzt auf 50 %. Damit war der Pfeil ab Stärke 5 immer gleich lang.

@@ -35,6 +35,7 @@ render.yaml          Render-Blueprint
 ## Deployment (Render)
 
 - Der Besitzer hat den Blueprint auf Render angelegt (2026-10-30).
+- Live-Adresse: https://krater-kommando.onrender.com (erster erfolgreicher Deploy: `5a4db07`, 2026-11-11).
 - **Render deployt von `main`** (Entscheidung des Besitzers, 2026-10-31; `branch: main` in `render.yaml`).
   Entwickelt wird auf eigenen Branches (bisher `claude/gifted-johnson-szzmkh`). Ein Push auf `main` löst einen Deploy aus.
 - Offen: `region` (z. B. `frankfurt`) und `numInstances: 1` sind nicht gesetzt; der Besitzer hat nur den Branch
