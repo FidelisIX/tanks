@@ -259,6 +259,7 @@
   function show(name) {
     for (const s of ['menu', 'room', 'game']) $(`screen-${s}`).classList.toggle('hidden', s !== name);
     document.body.classList.toggle('in-game', name === 'game');
+    if (name === 'game' && document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
     if (name === 'game') requestAnimationFrame(fitCanvas);
   }
 
@@ -1130,13 +1131,21 @@
     if (b) setAim({ weapon: b.dataset.w });
   };
   $('btn-fire').onclick = fire;
+  // a clicked control button must not keep the focus, or the space bar would also press it
+  $('controls').addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (btn) btn.blur();
+  });
   $('btn-fullscreen').onclick = () => {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     else document.documentElement.requestFullscreen().catch(() => {});
   };
 
   document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+    // leave keys to a text field only if it is actually visible: some browsers keep the focus in
+    // a field of a hidden screen (e.g. the room code after joining with Enter)
+    const field = (e.target.tagName === 'INPUT' && e.target.type !== 'range') || e.target.tagName === 'SELECT';
+    if (field && e.target.offsetParent !== null) return;
     if (e.key === 'h' || e.key === 'H' || e.key === '?') return Help.isOpen() ? Help.close() : Help.open();
     if (Help.isOpen()) return;
     if (e.key === 'Escape' && targeting) return stopTargeting(), updateControls();

@@ -31,6 +31,11 @@ Spieler-Feedback (2026-11-11). Test mit Chromium (Playwright): Leertaste schieß
 nach Ziehen am Kraft-Regler, nach Waffenwahl und nach Öffnen/Schließen der Hilfe. Noch nicht nachgestellt; nachgefragt
 wurden: eigener Zug ja/nein, Aktion davor, Browser/Gerät, immer oder nur manchmal. Hinweis: Die Leertaste wirkt
 absichtlich nur im eigenen Zug.
+2026-11-12: Besitzer bestätigt „war mein Zug“; Browser noch unbekannt. Nur Chromium verfügbar, Firefox/WebKit nicht.
+Weitere Chromium-Tests (Fokus auf „?“, Schild-Knopf, unsichtbarem Codefeld) schießen ebenfalls. Vermutete Ursachen
+(unbestätigt): ein unsichtbares Textfeld behält in manchen Browsern den Fokus, oder ein angeklickter Knopf behält ihn.
+Absicherung eingebaut: Tasten nur bei sichtbarem Textfeld ignorieren, Fokus beim Wechsel ins Spiel entfernen,
+Knöpfe der Bedienleiste nach dem Klick entfokussieren. Offen, bis der Besitzer bestätigt, ob es damit klappt.
 
 ## So gewollt
 
