@@ -51,7 +51,7 @@ wenn man A/D gedrückt hält (jede Tastenwiederholung eine Nachricht), mit den P
 Lösung: Der Flutschutz gilt nur noch für Fahren, Zielen und Ping (40/s); alle anderen Aktionen werden nie verworfen
 (Obergrenze 200/s gegen Missbrauch). Winkel, Kraft und Waffe werden mit dem Schuss mitgeschickt. Der Browser schickt
 Fahr-Nachrichten höchstens alle 30 ms. Danach: Schuss kommt bei 30/45/60 Nachrichten an, mit dem richtigen Winkel.
-Behoben in diesem Commit; bestätigt erst, wenn der Besitzer es im Spiel nicht mehr erlebt.
+Behoben in `13ec4b5`; bestätigt erst, wenn der Besitzer es im Spiel nicht mehr erlebt.
 
 ### B-016 – Bohrer „funktioniert nicht richtig“
 Spieler-Feedback (2026-11-11). Gemessen: 80 Schüsse mit Einschlag 5–20 px vor dem Gegner (Windstille). Bohrer Ø 28 Schaden,
