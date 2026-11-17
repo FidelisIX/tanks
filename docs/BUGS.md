@@ -26,7 +26,15 @@ zuletzt beigetretenen Tabs übernehmen. Für normale Nutzung (ein Spieler pro Ge
 diese Zeit, auch für andere Räume. Wie lange genau, ist **nicht gemessen**. Bei vielen gleichzeitigen Räumen mit
 Bots prüfen.
 
-### B-015 – Leertaste schießt nicht (nicht nachgestellt)
+## So gewollt
+
+### B-006 – Ohne Token sind Statistik und Räume nach einem Neustart weg
+Ohne `STATS_GITHUB_TOKEN` nutzt der Server nur den Arbeitsspeicher. Die Statistikseite weist darauf hin.
+Einrichtung: siehe README, Abschnitt „Statistik und Neustarts“.
+
+## Behoben
+
+### B-015 – Leertaste schießt manchmal nicht
 Spieler-Feedback (2026-11-11). Test mit Chromium (Playwright): Leertaste schießt nach Beitritt per Klick und per Enter,
 nach Ziehen am Kraft-Regler, nach Waffenwahl und nach Öffnen/Schließen der Hilfe. Noch nicht nachgestellt; nachgefragt
 wurden: eigener Zug ja/nein, Aktion davor, Browser/Gerät, immer oder nur manchmal. Hinweis: Die Leertaste wirkt
@@ -36,14 +44,14 @@ Weitere Chromium-Tests (Fokus auf „?“, Schild-Knopf, unsichtbarem Codefeld) 
 (unbestätigt): ein unsichtbares Textfeld behält in manchen Browsern den Fokus, oder ein angeklickter Knopf behält ihn.
 Absicherung eingebaut: Tasten nur bei sichtbarem Textfeld ignorieren, Fokus beim Wechsel ins Spiel entfernen,
 Knöpfe der Bedienleiste nach dem Klick entfokussieren. Offen, bis der Besitzer bestätigt, ob es damit klappt.
-
-## So gewollt
-
-### B-006 – Ohne Token sind Statistik und Räume nach einem Neustart weg
-Ohne `STATS_GITHUB_TOKEN` nutzt der Server nur den Arbeitsspeicher. Die Statistikseite weist darauf hin.
-Einrichtung: siehe README, Abschnitt „Statistik und Neustarts“.
-
-## Behoben
+2026-11-17: Besitzer nutzt Chrome, Fehler tritt „ab und zu“ auf. Ursache gefunden: Der Flutschutz des Servers verwarf
+jede Nachricht ab der 41. pro Sekunde – auch den Schuss. Direkt am Server nachgestellt: 30 Fahr-Nachrichten + Feuern in
+~360 ms → Schuss kommt an; 45 bzw. 60 → Schuss verworfen (FEUER! im Browser schon ausgegraut, Zug läuft ab). Erreichbar,
+wenn man A/D gedrückt hält (jede Tastenwiederholung eine Nachricht), mit den Pfeiltasten zielt und gleich danach feuert.
+Lösung: Der Flutschutz gilt nur noch für Fahren, Zielen und Ping (40/s); alle anderen Aktionen werden nie verworfen
+(Obergrenze 200/s gegen Missbrauch). Winkel, Kraft und Waffe werden mit dem Schuss mitgeschickt. Der Browser schickt
+Fahr-Nachrichten höchstens alle 30 ms. Danach: Schuss kommt bei 30/45/60 Nachrichten an, mit dem richtigen Winkel.
+Behoben in diesem Commit; bestätigt erst, wenn der Besitzer es im Spiel nicht mehr erlebt.
 
 ### B-016 – Bohrer „funktioniert nicht richtig“
 Spieler-Feedback (2026-11-11). Gemessen: 80 Schüsse mit Einschlag 5–20 px vor dem Gegner (Windstille). Bohrer Ø 28 Schaden,

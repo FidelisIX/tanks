@@ -815,13 +815,14 @@ async function shutdown() {
 }
 
 // ---------- websocket ----------
+const FREQUENT = new Set(['move', 'aim', 'ping']);
 const wss = new WebSocketServer({ server, maxPayload: 4096 });
 
 wss.on('connection', (ws) => {
   // `player` is swapped for the stored one when this connection resumes a seat
   let player = newPlayer({ ws });
   ws.isAlive = true;
-  ws.budget = { count: 0, since: Date.now() };
+  ws.budget = { count: 0, all: 0, since: Date.now() };
   ws.on('pong', () => (ws.isAlive = true));
 
   const myTurn = (room) =>
@@ -924,9 +925,13 @@ wss.on('connection', (ws) => {
       case 'aim':
         if (myTurn(room)) setAim(room, room.game.tanks[room.game.turnIdx], msg);
         break;
-      case 'fire':
-        if (myTurn(room)) fire(room, room.game.tanks[room.game.turnIdx]);
+      case 'fire': {
+        if (!myTurn(room)) return;
+        const tank = room.game.tanks[room.game.turnIdx];
+        if (msg.angle !== undefined || msg.power !== undefined || msg.weapon !== undefined) setAim(room, tank, msg);
+        fire(room, tank);
         break;
+      }
       case 'shield':
         if (myTurn(room)) raiseShield(room, room.game.tanks[room.game.turnIdx]);
         break;
@@ -962,16 +967,19 @@ wss.on('connection', (ws) => {
   }
 
   ws.on('message', (raw) => {
-    // simple flood guard: at most 40 messages per second
+    // Flood guard. Only the frequent messages (driving, aiming, pings) are limited to 40 per
+    // second; actions such as firing must never be dropped, or a shot right after driving
+    // could get lost (B-015). A generous cap on all messages still stops abuse.
     const now = Date.now();
-    if (now - ws.budget.since > 1000) ws.budget = { count: 0, since: now };
-    if (++ws.budget.count > 40) return;
+    if (now - ws.budget.since > 1000) ws.budget = { count: 0, all: 0, since: now };
+    if (++ws.budget.all > 200) return;
     let msg;
     try {
       msg = JSON.parse(raw);
     } catch {
       return;
     }
+    if (FREQUENT.has(msg && msg.type) && ++ws.budget.count > 40) return;
     // one message after another per connection ("resume" may wait for a backup)
     ws.queue = (ws.queue || Promise.resolve()).then(() => handle(msg || {})).catch((err) => console.error(err));
   });

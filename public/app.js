@@ -552,14 +552,19 @@
     if (!isMyTurn()) return;
     const t = myTank();
     clearTimeout(aimTimer);
-    send({ type: 'aim', angle: t.angle, power: t.power, weapon: t.weapon });
-    send({ type: 'fire' });
+    // the aim travels with the shot, so a dropped aim update can never change the shot
+    send({ type: 'fire', angle: t.angle, power: t.power, weapon: t.weapon });
     phase = 'wait';
     updateControls();
   }
 
+  // the server takes at most one step per 25 ms, so faster key repeat only wastes messages
+  let lastDrive = 0;
   function drive(dir) {
-    if (isMyTurn()) send({ type: 'move', dir });
+    const now = performance.now();
+    if (!isMyTurn() || now - lastDrive < 30) return;
+    lastDrive = now;
+    send({ type: 'move', dir });
   }
 
   // Teleport: first pick the target on the map, then the server moves the tank.
