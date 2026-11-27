@@ -25,20 +25,34 @@ function chooseWeapon(tank, target, level) {
   const has = (k) => tank.ammo[k] > 0;
   if (Math.random() > cfg.specialChance) return 'shell';
   if (has('nuke') && target.hp > 50) return 'nuke';
-  const options = ['heavy', 'cluster', 'drill', 'ball', 'triple'].filter(has);
+  if (has('hotshower') && target.hp > 40) return 'hotshower';
+  const options = ['heavy', 'cluster', 'drill', 'ball', 'motorball', 'triple', 'trench'].filter(has);
   return options.length ? options[Math.floor(Math.random() * options.length)] : 'shell';
 }
 
 // Distance of the closest explosion of a shot to the target (Infinity when nothing explodes).
+// Trench digger: it does no explosion damage, so it is only worth it if digging under the
+// target makes it fall. Lower is better, like a distance: minus the fall the target would take.
+function trenchScore(game, tank, shells, target) {
+  const terrain = game.terrain.slice();
+  for (const s of shells) if (s.explosion) P.applyCrater(terrain, s.explosion);
+  const clones = game.tanks.map((t) => ({ ...t }));
+  const falls = P.settleTanks(terrain, clones);
+  if (falls[tank.id]) return Infinity; // never dig under ourselves
+  return falls[target.id] ? -falls[target.id] : Infinity;
+}
+
 function miss(game, tank, weapon, angle, power, target) {
   const shells = P.fireShells(game.terrain, game.tanks, { ...tank, angle, power }, weapon, game.wind);
+  if (P.WEAPONS[weapon].trench) return trenchScore(game, tank, shells, target);
   let best = Infinity;
   for (const s of shells) {
     if (!s.explosion) continue;
-    const d = Math.hypot(s.explosion.x - target.x, s.explosion.y - (target.y - 6));
-    // never pick a shot that would hit ourselves harder than the target
+    // never pick a shot in which any explosion would reach ourselves (fans and cluster bombs
+    // have several; one good shell must not hide another one landing next to us)
     const self = Math.hypot(s.explosion.x - tank.x, s.explosion.y - (tank.y - 6));
-    best = Math.min(best, self < s.explosion.r + 10 && self < d ? Infinity : d);
+    if (P.WEAPONS[s.w].damage && self < s.explosion.r + P.DAMAGE_REACH) return Infinity;
+    best = Math.min(best, Math.hypot(s.explosion.x - target.x, s.explosion.y - (target.y - 6)));
   }
   return best;
 }
@@ -72,20 +86,41 @@ function decide(game, tank, level = 'medium') {
   }
   const target = chooseTarget(tank, game.tanks, level);
   if (!target) return { weapon: 'shell', angle: 90, power: 30 };
-  const weapon = chooseWeapon(tank, target, level);
-  const aim = findAim(game, tank, weapon, target);
-  return {
+  let weapon = chooseWeapon(tank, target, level);
+  let aim = findAim(game, tank, weapon, target);
+  if (aim.d === Infinity && weapon !== 'shell') {
+    weapon = 'shell'; // e.g. no trench that would make the target fall
+    aim = findAim(game, tank, weapon, target);
+  }
+  const shot = {
     weapon,
     angle: Math.max(0, Math.min(180, Math.round(aim.angle + rand(-cfg.angleErr, cfg.angleErr)))),
     power: Math.max(10, Math.min(tank.maxPower, Math.round(aim.power + rand(-cfg.powerErr, cfg.powerErr)))),
   };
+  // the deliberate aiming error must not turn the shot against ourselves
+  if (!harmsSelf(game, tank, shot)) return shot;
+  const exact = { weapon, angle: aim.angle, power: aim.power };
+  return harmsSelf(game, tank, exact) ? { weapon: 'shell', angle: aim.angle, power: aim.power } : exact;
+}
+
+// Would this shot damage our own tank, by an explosion or by digging away the ground under it?
+function harmsSelf(game, tank, { weapon, angle, power }) {
+  const shells = P.fireShells(game.terrain, game.tanks, { ...tank, angle, power }, weapon, game.wind);
+  const terrain = game.terrain.slice();
+  for (const s of shells) {
+    if (!s.explosion) continue;
+    if (P.explosionDamage(tank, s.explosion, P.WEAPONS[s.w]) > 0) return true;
+    P.applyCrater(terrain, s.explosion);
+  }
+  const falls = P.settleTanks(terrain, game.tanks.map((t) => ({ ...t })));
+  return !!falls[tank.id];
 }
 
 // Shopping list per difficulty, bought in this order as long as the money lasts.
 const SHOPPING = {
-  easy: [['item', 'ball'], ['item', 'heavy'], ['upgrade', 'armor']],
-  medium: [['upgrade', 'armor'], ['item', 'heavy'], ['item', 'shield'], ['item', 'cluster'], ['upgrade', 'shock']],
-  hard: [['item', 'nuke'], ['upgrade', 'armor'], ['upgrade', 'shieldBoost'], ['item', 'shield'], ['item', 'heavy'], ['upgrade', 'cannon'], ['item', 'cluster']],
+  easy: [['item', 'ball'], ['item', 'heavy'], ['item', 'motorball'], ['upgrade', 'armor']],
+  medium: [['upgrade', 'armor'], ['item', 'heavy'], ['item', 'shield'], ['item', 'motorball'], ['item', 'cluster'], ['upgrade', 'shock']],
+  hard: [['item', 'hotshower'], ['item', 'nuke'], ['upgrade', 'armor'], ['upgrade', 'shieldBoost'], ['item', 'shield'], ['item', 'heavy'], ['item', 'motorball'], ['upgrade', 'cannon'], ['item', 'cluster']],
 };
 
 function shoppingList(level) {

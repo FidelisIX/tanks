@@ -23,8 +23,9 @@ zuletzt beigetretenen Tabs übernehmen. Für normale Nutzung (ein Spieler pro Ge
 
 ### B-008 – Bot-Zielsuche blockiert den Server kurz
 `server/bot.js` simuliert für jeden Bot-Zug einige tausend Schüsse synchron. Das blockiert den Node-Prozess für
-diese Zeit, auch für andere Räume. Wie lange genau, ist **nicht gemessen**. Bei vielen gleichzeitigen Räumen mit
-Bots prüfen.
+diese Zeit, auch für andere Räume. Gemessen am 2026-11-27 (Stufe Schwer, 400 Entscheidungen, lokal): Median 91–205 ms,
+95 % unter 240–424 ms, höchstens ~490 ms (gelegentlich bis ~670 ms). Bei vielen gleichzeitigen Räumen mit Bots spürbar;
+ggf. Zielsuche gröber machen oder in einen Worker auslagern.
 
 ## So gewollt
 
@@ -33,6 +34,13 @@ Ohne `STATS_GITHUB_TOKEN` nutzt der Server nur den Arbeitsspeicher. Die Statisti
 Einrichtung: siehe README, Abschnitt „Statistik und Neustarts“.
 
 ## Behoben
+
+### B-018 – Computergegner traf sich mit Hot Shower selbst
+Beim Einbau der neuen Waffen gefunden (2026-11-27): Mit dem Hot Shower traf der Bot sich in 4 von 56 Entscheidungen selbst.
+Die Selbstschutz-Prüfung akzeptierte einen Schuss, wenn eine Bombe gut lag, auch wenn eine andere neben dem eigenen Panzer
+einschlug; außerdem verschob die absichtliche Zielungenauigkeit den Schuss nach der Prüfung. Jetzt wird jeder Schuss
+verworfen, bei dem irgendeine Explosion oder ein eigener Absturz droht, auch nach Einrechnen der Ungenauigkeit.
+Danach: 0 Selbsttreffer (Hot Shower 0/62, Atombombe 0/154). Behoben in diesem Commit.
 
 ### B-017 – Statistik aus dem Hauptmenü nicht aufrufbar
 Meldung des Besitzers (2026-11-27). Live nicht nachgestellt: Auf Laptop (1366 × 768) und Handy (Pixel 7) öffnet der Link
