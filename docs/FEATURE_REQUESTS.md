@@ -58,5 +58,5 @@ Vorschlag: die bisherigen Wegwerf-Tests (WebSocket-Bots, Playwright) als `npm te
 | F-038 | Testspiel: verschiedene Karten – Hügel, Berge, Ebene, Canyon, Inseln (mit Wasser); Auswahl im Warteraum oder Zufall | `279130a` |
 | F-039 | Testspiel: besser aufholen – Kopfgeld auf den alleinigen Führenden (+50 % Punkte, +25 für Abschuss) und 25 % Shop-Rabatt für den alleinigen Letzten | `279130a` |
 | F-040 | Testspiel: Hot Shower – Dreierfächer aus drei kleineren Atombomben (80 px, 60 Schaden), Shop 220 | `279130a` |
-| F-041 | Optische Varianten: Tageszeit pro Runde (Tag, Morgen, Abend, Nacht; Sonne/Mond, Wolken, Sterne, Lichtfarbe) und eigenes Aussehen je Kartentyp (Wüste, roter Fels mit Schichten, Inseln mit Strand) | dieser Commit |
-| F-042 | Berge deutlich bergiger (höchster Gipfel im Median y 259 → 113, Höhenunterschied 274 → 395 px) mit Schneekappen und Schnee-/Felstextur; Schneegrenze passt sich jeder Karte an; weiche Obergrenze statt abgeschnittener Gipfel (46 → 0 von 200 Karten) | dieser Commit |
+| F-041 | Optische Varianten: Tageszeit pro Runde (Tag, Morgen, Abend, Nacht; Sonne/Mond, Wolken, Sterne, Lichtfarbe) und eigenes Aussehen je Kartentyp (Wüste, roter Fels mit Schichten, Inseln mit Strand) | `046b5ff` |
+| F-042 | Berge deutlich bergiger (höchster Gipfel im Median y 259 → 113, Höhenunterschied 274 → 395 px) mit Schneekappen und Schnee-/Felstextur; Schneegrenze passt sich jeder Karte an; weiche Obergrenze statt abgeschnittener Gipfel (46 → 0 von 200 Karten) | `046b5ff` |
