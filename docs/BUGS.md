@@ -26,13 +26,6 @@ zuletzt beigetretenen Tabs übernehmen. Für normale Nutzung (ein Spieler pro Ge
 diese Zeit, auch für andere Räume. Wie lange genau, ist **nicht gemessen**. Bei vielen gleichzeitigen Räumen mit
 Bots prüfen.
 
-### B-017 – Statistik aus dem Hauptmenü nicht aufrufbar
-Meldung des Besitzers (2026-11-27). Live nicht nachgestellt: Auf Laptop (1366 × 768) und Handy (Pixel 7) öffnet der Link
-https://krater-kommando.onrender.com/statistik.html ohne Fehler (zeigt 1 Match). Auffällig: Der Link war ein kleiner grauer
-Text und leicht zu übersehen; im Warteraum gab es ihn gar nicht. Jetzt Knöpfe „📊 Statistik & Rekorde“ und „❓ Waffen & Upgrades“
-im Hauptmenü und im Warteraum. Ursache laut Screenshot des Besitzers (Handy, Chrome): Er war im **Warteraum**, und dort gab es
-keinen Weg zur Statistik. Behoben in `0b3ce8c` (Knopf im Warteraum, öffnet in neuem Tab); online, sobald auf `main`.
-
 ## So gewollt
 
 ### B-006 – Ohne Token sind Statistik und Räume nach einem Neustart weg
@@ -40,6 +33,14 @@ Ohne `STATS_GITHUB_TOKEN` nutzt der Server nur den Arbeitsspeicher. Die Statisti
 Einrichtung: siehe README, Abschnitt „Statistik und Neustarts“.
 
 ## Behoben
+
+### B-017 – Statistik aus dem Hauptmenü nicht aufrufbar
+Meldung des Besitzers (2026-11-27). Live nicht nachgestellt: Auf Laptop (1366 × 768) und Handy (Pixel 7) öffnet der Link
+https://krater-kommando.onrender.com/statistik.html ohne Fehler (zeigt 1 Match). Auffällig: Der Link war ein kleiner grauer
+Text und leicht zu übersehen; im Warteraum gab es ihn gar nicht. Jetzt Knöpfe „📊 Statistik & Rekorde“ und „❓ Waffen & Upgrades“
+im Hauptmenü und im Warteraum. Ursache laut Screenshot des Besitzers (Handy, Chrome): Er war im **Warteraum**, und dort gab es
+keinen Weg zur Statistik. Behoben in `0b3ce8c` (Knopf im Warteraum, öffnet in neuem Tab); seit `0d1b476` online.
+Bestätigt vom Besitzer am 2026-11-27: Statistik lässt sich aus dem Raum aufrufen.
 
 ### B-015 – Leertaste schießt manchmal nicht
 Spieler-Feedback (2026-11-11). Test mit Chromium (Playwright): Leertaste schießt nach Beitritt per Klick und per Enter,
