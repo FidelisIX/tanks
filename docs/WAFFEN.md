@@ -46,7 +46,7 @@ zeigt dieselben Werte.
 |---|---|---|---|
 | Schild (Taste S) | Energieblase mit 60 Punkten. Gegnerische Geschosse explodieren schon an der Blase; der Schild fängt den Schaden ab, bis seine Punkte aufgebraucht sind. Das eigene Geschoss fliegt durch den eigenen Schild. Aktivieren kostet den Zug. Kein Schutz vor Fallschaden. | 1 | 42 |
 | Teleport (Taste T) | Im eigenen Zug eine Stelle auf der Karte anklicken; der Panzer springt dorthin. Nicht näher als 40 px an einen anderen Panzer. Kostet den Zug. | 0 | 50 |
-| Reparaturset (Taste R) | Repariert 35 Lebenspunkte (höchstens bis 100). Kostet den Zug. | 0 | 35 |
+| Reparaturset (Taste R) | Repariert 50 Lebenspunkte (höchstens bis 100). Kostet den Zug. | 0 | 35 |
 | Treibstoff (A/D, ◀ ▶) | Zu Beginn jeder Runde 300, der Rest verfällt am Rundenende. Fahren kostet 1 pro Pixel, bergauf zusätzlich 1 pro Pixel Höhe. Ohne Kletterketten schafft der Panzer Steigungen bis 2,5 : 1; von Klippen fährt er nicht hinunter. | 300 pro Runde | +100 für 14 (gilt für die nächste Runde) |
 
 ## Upgrades

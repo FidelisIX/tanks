@@ -37,8 +37,8 @@
     { maxSlope: 12, uphillCost: 0 },
   ];
   const TELEPORT_MIN_DISTANCE = 40; // px to the nearest other tank
-  const TANK_FUEL = 100;
-  const REPAIR_HP = 35; // hit points restored by one repair kit // extra fuel per round per level of the "Großtank" upgrade
+  const TANK_FUEL = 100; // extra fuel per round per level of the "Großtank" upgrade
+  const REPAIR_HP = 50; // hit points restored by one repair kit (it costs the whole turn)
   // Map types. On "islands" everything below WATER_LEVEL is sea: falling in costs WATER_SPLASH
   // at once and WATER_TURN at the start of every own turn spent in the water.
   const MAP_TYPES = {
@@ -103,7 +103,7 @@
     trench: { name: 'Tunnelbohrer', price: 18, qty: 1, desc: 'gräbt einen Graben durch die Erde, ohne Explosionsschaden' },
     motorball: { name: 'Motor-Ball', price: 30, qty: 1, desc: 'rollt mit Antrieb weiter, auch bergauf' },
     hotshower: { name: 'Hot Shower', price: 220, qty: 1, desc: 'drei kleinere Atombomben im Fächer' },
-    repair: { name: 'Reparaturset', price: 35, qty: 1, desc: '+35 Lebenspunkte, kostet den Zug' },
+    repair: { name: 'Reparaturset', price: 35, qty: 1, desc: '+50 Lebenspunkte, kostet den Zug' },
     teleport: { name: 'Teleport', price: 50, qty: 1, desc: 'im eigenen Zug an eine angeklickte Stelle springen, kostet den Zug' },
     fuel: { name: 'Treibstoff', price: 14, qty: 100, desc: 'für die nächste Runde, zusätzlich zu den 300 pro Runde' },
   };

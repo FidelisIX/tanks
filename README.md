@@ -49,7 +49,7 @@ Die Munitionsangaben gelten für den Start eines Matches. Was übrig bleibt, nim
 **Fahren:** Im eigenen Zug mit A/D oder ◀ ▶. Zu Beginn jeder Runde gibt es 300 Treibstoff; Fahren kostet 1 pro Pixel, bergauf etwas mehr.
 Zu steile Hänge und Klippen sind nicht befahrbar; die Kletterketten (Upgrade) schaffen steilere Hänge.
 
-**Reparaturset** (Taste R, im Shop für 35): repariert 35 Lebenspunkte, kostet den Zug.
+**Reparaturset** (Taste R, im Shop für 35): repariert 50 Lebenspunkte (höchstens bis 100), kostet den Zug.
 
 **Teleport** (Taste T, im Shop): im eigenen Zug eine Stelle auf der Karte anklicken und dorthin springen. Kostet den Zug.
 
