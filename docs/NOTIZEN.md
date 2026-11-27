@@ -29,6 +29,9 @@ render.yaml          Render-Blueprint
 - Die **Hilfe im Spiel** (`public/help.js`) erzeugt ihre Tabellen aus `shared/physics.js` (auch die Waffentexte `desc`)
   und ist damit immer aktuell. `docs/WAFFEN.md` wird mit `node scripts/build-waffen-doc.js` aus denselben Werten erzeugt;
   nach Balancing-Änderungen neu erzeugen.
+- Kartentypen (`MAP_TYPES` in `shared/physics.js`): Auf **Bergen** kommt man absichtlich kaum vom Fleck
+  (gemessen: Median 56 px Fahrstrecke, 1 % bleiben am Start hängen). Entscheidung des Besitzers vom 2026-11-27: so in Ordnung,
+  dort helfen Kletterketten und Teleport. Nicht „reparieren“.
 - Zeitkonstanten (Wiederverbindung 60 s, Host-Übergabe 15 s, Countdown 5 s, getrennter Spieler 8 s pro Zug)
   stehen oben in `server.js`.
 
