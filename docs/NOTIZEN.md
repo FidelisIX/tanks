@@ -1,6 +1,6 @@
 # Notizen für die nächste Sitzung
 
-Stand: 2026-10-31. Diese Datei beschreibt den aktuellen Stand und offene Entscheidungen, damit eine neue
+Stand: 2026-11-27. Diese Datei beschreibt den aktuellen Stand und offene Entscheidungen, damit eine neue
 Sitzung direkt weitermachen kann. Bugs stehen in [BUGS.md](BUGS.md), Wünsche in [FEATURE_REQUESTS.md](FEATURE_REQUESTS.md).
 
 ## Worum es geht
@@ -9,6 +9,33 @@ Sitzung direkt weitermachen kann. Bugs stehen in [BUGS.md](BUGS.md), Wünsche in
 online gegen Freunde oder gegen Computergegner. Der Anlass war das Spiel „Tanks“ auf addictinggames.com.
 Absprache mit dem Besitzer: **keine Kopie dieses Spiels**, sondern ein eigenes Spiel im selben Genre
 mit eigener Grafik, eigenen Waffen und eigenen Regeln.
+
+## Aktueller Stand (2026-11-27)
+
+Live: https://krater-kommando.onrender.com, Stand `main` = `51e7ac4` (identisch mit `claude/gifted-johnson-szzmkh`).
+
+- **Spiel:** 2–4 Spieler oder gegen Computergegner (Leicht/Mittel/Schwer), Matches mit 3/5/10 Runden, Shop zwischen den Runden.
+- **11 Waffen:** Granate, Schwere Bombe, Dreierfächer, Erdklumpen, Ball, Bohrer (Annäherungszünder, 150 px), Splitterbombe,
+  Atombombe, Tunnelbohrer, Motor-Ball, Hot Shower. Dazu Schild (S), Teleport (T), Reparaturset (R, +50 LP).
+- **Upgrades:** Panzerung (−10 % Schaden/Stufe, wirkt nach dem Schild), Schildverstärker, Stoßdämpfer, Turbo-Kanone,
+  Kletterketten, Großtank. Treibstoff 300 pro Runde.
+- **Karten:** Hügel, Berge (absichtlich kaum befahrbar), Ebene, Canyon, Inseln (Wasser: 25 beim Sturz, 10 pro Zug);
+  Gastgeber wählt Typ oder Zufall. Tageszeit (Tag/Morgen/Abend/Nacht) pro Runde, nur optisch.
+- **Aufholen:** Kopfgeld auf den alleinigen Führenden, 25 % Shop-Rabatt für den alleinigen Letzten.
+- **Raum:** Einladungslink/Code, Host-Rechte, Wiedereinstieg nach Verbindungsabbruch, Nochmal-Abstimmung, Countdown,
+  Räume und Statistik überstehen Deploys (Branch `statistik`, Token eingerichtet und funktioniert).
+- **Bedienung:** Tastatur (siehe Hilfe, Taste H) und Handy-Tasten für Winkel/Kraft; Spielfläche passt sich dem Fenster an.
+
+**Offen** (Details in BUGS.md / FEATURE_REQUESTS.md):
+- B-015 (Leertaste) und B-019 (FEUER am Handy ohne Wirkung): Korrekturen online, Bestätigung des Besitzers steht aus.
+- B-004 (kleine Schrift auf dem Handy), B-005 (Abstürze nicht gesichert), B-007 (Tabs teilen Sitzung), B-008 (Bot-Rechenzeit
+  bis ~0,5 s blockiert den Server).
+- F-019 Teil 2: Region Frankfurt (braucht einen neuen Render-Dienst; Token dort neu eintragen), `numInstances: 1`.
+- F-020 (mehr Spieler), F-021 (Handy), F-022 (automatische Tests im Repo).
+
+**Arbeitsweise mit dem Besitzer:** Änderungen auf `claude/gifted-johnson-szzmkh` entwickeln und testen, dann fragen; erst nach
+„ja“ per Fast-Forward nach `main` (löst Deploy aus, ~20–50 s). Nach dem Deploy live prüfen (`/healthz`, `/api/stats`,
+ausgelieferte Dateien).
 
 ## Aufbau
 
