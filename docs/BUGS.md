@@ -40,7 +40,7 @@ Beim Einbau der neuen Waffen gefunden (2026-11-27): Mit dem Hot Shower traf der 
 Die Selbstschutz-Prüfung akzeptierte einen Schuss, wenn eine Bombe gut lag, auch wenn eine andere neben dem eigenen Panzer
 einschlug; außerdem verschob die absichtliche Zielungenauigkeit den Schuss nach der Prüfung. Jetzt wird jeder Schuss
 verworfen, bei dem irgendeine Explosion oder ein eigener Absturz droht, auch nach Einrechnen der Ungenauigkeit.
-Danach: 0 Selbsttreffer (Hot Shower 0/62, Atombombe 0/154). Behoben in diesem Commit.
+Danach: 0 Selbsttreffer (Hot Shower 0/62, Atombombe 0/154). Behoben in `02cc633`.
 
 ### B-017 – Statistik aus dem Hauptmenü nicht aufrufbar
 Meldung des Besitzers (2026-11-27). Live nicht nachgestellt: Auf Laptop (1366 × 768) und Handy (Pixel 7) öffnet der Link
