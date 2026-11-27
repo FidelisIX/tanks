@@ -65,4 +65,4 @@ Vorschlag: die bisherigen Wegwerf-Tests (WebSocket-Bots, Playwright) als `npm te
 | F-045 | Deutlicher, in welcher Runde man ist: großes „Runde 2 von 5“ (mit Karte, Tageszeit, „Letzte Runde!“) zu Rundenbeginn, Runde oben als orange Markierung | `b369a02` |
 | F-046 | Erdklumpen mehr Erde: Radius 45 → 55 px (~50 % mehr) | `b369a02` |
 | F-047 | Neues Reparaturset: +35 Lebenspunkte (höchstens 100), kostet den Zug, Taste R, Shop 35; Computergegner (Mittel/Schwer) kaufen und nutzen es | `b369a02` |
-| F-048 | Reparaturset heilt 50 statt 35 Lebenspunkte, weil es den ganzen Zug kostet (Wunsch des Besitzers) | dieser Commit |
+| F-048 | Reparaturset heilt 50 statt 35 Lebenspunkte, weil es den ganzen Zug kostet (Wunsch des Besitzers) | `07b79f8` |
