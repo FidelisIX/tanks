@@ -53,3 +53,8 @@ Vorschlag: die bisherigen Wegwerf-Tests (WebSocket-Bots, Playwright) als `npm te
 | F-033 | Bohrer gräbt weiter: 150 px statt 90 px (90 px war kürzer als die Explosionsradien großer Waffen) | `042d76b` |
 | F-034 | Neue Waffe Tunnelbohrer (Vorschlag des Besitzers, Gegenstück zum Erdklumpen): gräbt bis 150 px einen offenen Graben, kein Explosionsschaden; 2 zum Start, im Shop 18, Taste 9. Echte Tunnel sind im jetzigen Gelände (eine Bodenhöhe pro Spalte) nicht möglich | `f550abe` |
 | F-035 | Spiel im Browser größer: volle Fensterbreite, Spielfläche passt sich der Fensterhöhe an, Titel im Spiel ausgeblendet, kompaktere Anzeigetafel, Vollbild-Knopf. Laptop 1366×768: 807×438 → 943×511 px; Monitor 1920×1080: 1202×652 → 1519×823 px | `7605d18` |
+| F-036 | Testspiel: Ball V2, der aufwärts rollt – Motor-Ball (Antrieb, bis 300 px, Steigung bis 3 : 1), Shop 30 | dieser Commit |
+| F-037 | Testspiel: dauerhaftes Tank-Upgrade – Großtank, +100 Treibstoff pro Runde, 2 Stufen, 40/70 | dieser Commit |
+| F-038 | Testspiel: verschiedene Karten – Hügel, Berge, Ebene, Canyon, Inseln (mit Wasser); Auswahl im Warteraum oder Zufall | dieser Commit |
+| F-039 | Testspiel: besser aufholen – Kopfgeld auf den alleinigen Führenden (+50 % Punkte, +25 für Abschuss) und 25 % Shop-Rabatt für den alleinigen Letzten | dieser Commit |
+| F-040 | Testspiel: Hot Shower – Dreierfächer aus drei kleineren Atombomben (80 px, 60 Schaden), Shop 220 | dieser Commit |

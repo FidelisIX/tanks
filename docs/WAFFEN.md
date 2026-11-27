@@ -17,6 +17,8 @@ zeigt dieselben Werte.
 | 7 | Splitterbombe | 5 × 18 | 18 px je Splitter | normal (1) | nur Shop | 42 |
 | 8 | Atombombe | 95 | 115 px | sehr gering (0,5) | nur Shop | 140 |
 | 9 | Tunnelbohrer | – (gräbt Graben) | Rinne 28 px breit | gering (0,8) | 2 | 18 |
+| 10 | Motor-Ball | 40 | 30 px | hoch (1,1) | nur Shop | 30 |
+| 11 | Hot Shower | 3 × 60 | 80 px | sehr gering (0,5) | nur Shop | 220 |
 
 - **Schaden** ist der Wert bei einem Treffer im Zentrum der Explosion. Er nimmt mit dem Abstand linear ab, bis auf
   40 % am Rand (Krater-Radius + 10 px). Weiter weg gibt es keinen Schaden.
@@ -35,6 +37,8 @@ zeigt dieselben Werte.
 - **Splitterbombe:** Zerfällt am höchsten Punkt der Flugbahn in 5 Splitter (je 18 Schaden, Krater 18 px), die sich auffächern.
 - **Atombombe:** Riesiger Krater und fast tödlicher Schaden im ganzen Umkreis; bricht viel Boden weg (Fallschaden). Kaum windanfällig, sehr teuer.
 - **Tunnelbohrer:** Gegenstück zum Erdklumpen: gräbt sich nach dem Aufprall bis zu 150 px durch die Erde und nimmt dabei die Erde entlang seines Weges weg (Rinne 28 px breit). Weil die Erde darüber nachsackt, entsteht ein offener Graben. Kein Explosionsschaden – aber wer den Boden verliert, bekommt Fallschaden.
+- **Motor-Ball:** Ball mit Antrieb: rollt nach dem Aufprall in Flugrichtung weiter, auch bergauf (Steigung bis 3 : 1), höchstens 300 px. Explodiert an einem Panzer, an einer zu steilen Wand oder am Ende der Strecke; über Klippen fliegt er weiter.
+- **Hot Shower:** Dreierfächer aus drei kleineren Atombomben (−5°, 0°, +5°): je 80 px Krater und bis zu 60 Schaden. Kaum windanfällig, sehr teuer.
 
 ## Schild, Teleport, Treibstoff
 
@@ -55,6 +59,7 @@ Upgrades gelten für das ganze Match und werden zwischen den Runden im Shop geka
 | Stoßdämpfer | −50 % Fallschaden (Stufe 2 = kein Fallschaden) | 2 | 42 / 63 |
 | Turbo-Kanone | +10 max. Kraft | 2 | 49 / 77 |
 | Kletterketten | steilere Hänge, weniger Verbrauch bergauf (Stufe 1: Steigung bis 5 : 1, halber Aufschlag bergauf; Stufe 2: bis 12 : 1, kein Aufschlag) | 2 | 50 / 80 |
+| Großtank | +100 Treibstoff pro Runde, dauerhaft | 2 | 40 / 70 |
 
 Alle Panzer haben immer 100 Lebenspunkte. Ohne Upgrades: maximale Kraft 100, Schild 60 Punkte.
 Die Panzerung verringert den erlittenen Schaden, statt Lebenspunkte hinzuzufügen. Der Gegner bekommt nur Punkte für den
@@ -69,6 +74,11 @@ tatsächlich erlittenen Schaden, an einem gepanzerten Panzer verdient er also we
   Explosion sackt die Erde darüber nach und es entsteht ein tiefer Krater.
 - **Wind:** Stärke 0–10, zu Beginn jeder Runde ausgewürfelt, danach ändert er sich pro Zug um höchstens ±2.
   In der Höhe weht er stärker als am Boden, hohe Bogenschüsse werden also stärker abgetrieben.
+- **Karten:** Hügel, Berge, Ebene, Canyon oder Inseln; der Gastgeber wählt im Warteraum einen Typ oder „Zufall“ (jede Runde ein anderer).
+  Auf den **Inseln** ist unterhalb der Wasserlinie Meer: Wer ins Wasser stürzt, bekommt sofort 25 Schaden (zählt für den
+  Schützen) und zu Beginn jedes eigenen Zugs im Wasser 10 weitere. Ins Wasser fahren oder teleportieren geht nicht.
+- **Aufholen:** Wer zu Rundenbeginn allein vorne liegt, trägt ein Kopfgeld: Schaden an ihm bringt 50 % mehr Punkte,
+  sein Abschuss 25 extra. Wer im Shop allein auf dem letzten Platz liegt, bekommt 25 % Rabatt auf alles.
 - **Punkte = Geld:** 1 pro Schadenspunkt am Gegner (auch auf den Schild und Fallschaden durch deinen Krater),
   50 pro Abschuss, 75 für den Rundensieg, 30 Grundbetrag pro Runde. Schaden über die Zerstörung hinaus zählt nicht.
 

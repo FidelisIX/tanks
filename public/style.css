@@ -168,6 +168,9 @@ canvas.targeting { cursor: crosshair; }
 .sb-row b { color: var(--text); }
 .sb-row.muted { color: var(--muted); }
 .sb .shield { color: #7fd8ff; }
+.sb .bounty { color: #f2c230; font-weight: 700; }
+.discount-note { margin: 0; color: #6fd36f; font-weight: 600; }
+.shop button b s { color: var(--muted); font-weight: 400; }
 .banner {
   background: #5a3a12; border: 1px solid var(--accent); color: #ffe2bf;
   border-radius: 8px; padding: 8px 12px; margin: 0 0 10px; text-align: center; font-weight: 600;

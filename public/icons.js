@@ -3,6 +3,15 @@
 const ICONS = (() => {
   const svg = (body) => `<svg class="icon" viewBox="0 0 32 32" aria-hidden="true">${body}</svg>`;
   return {
+    // ball with a little exhaust flame, rolling up a slope
+    motorball: svg(`<path d="M2 30L30 14v16z" fill="#5d4a2f"/>
+      <circle cx="17" cy="14" r="8" fill="#e5e7eb" stroke="#6b7280" stroke-width="1.2"/>
+      <path d="M12 9c4 2 7 6 6 11" stroke="#e8553b" stroke-width="2.2" fill="none"/>
+      <path d="M9 16l-6 1 5 2-4 3 6-1" fill="#f59e0b" stroke="#f08a24" stroke-width=".8"/>`),
+    // three small yellow bombs in a fan
+    hotshower: svg([-30, 0, 30].map((a) => `<g transform="rotate(${a} 16 30)"><g transform="rotate(35 16 13)">
+      <path d="M10 11h8c2.6 0 4.6 1 5.2 2-.6 1-2.6 2-5.2 2h-8z" fill="#facc15" stroke="#854d0e" stroke-width=".9"/>
+      <path d="M7 10.5l3 1.5v2l-3 1.5z" fill="#a16207"/><circle cx="16" cy="13" r="1.3" fill="#1f2937"/></g></g>`).join('')),
     // trench digger: a cut through a hill with the digging head at its end
     trench: svg(`<path d="M1 30V14c4-6 9-9 15-9s11 3 15 9v16z" fill="#8a6a3c" stroke="#5b4426" stroke-width="1.2"/>
       <path d="M4 15l8 6 9 2" stroke="#1b1f27" stroke-width="5" stroke-linecap="round" fill="none"/>
@@ -71,6 +80,10 @@ const ICONS = (() => {
     shock: svg(`<rect x="11" y="2" width="10" height="5" rx="1.5" fill="#64748b"/>
       <path d="M16 7l6 2.5-12 3 12 3-12 3 12 3-6 2.5" stroke="#f2c230" stroke-width="2.2" fill="none" stroke-linejoin="round"/>
       <rect x="11" y="25" width="10" height="5" rx="1.5" fill="#64748b"/>`),
+    // big jerrycan with a plus
+    tank: svg(`<path d="M6 7h15l5 5v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" fill="#dc2626" stroke="#7f1d1d" stroke-width="1.3"/>
+      <rect x="7" y="3" width="8" height="4" rx="1" fill="#7f1d1d"/>
+      <path d="M15 14v10M10 19h10" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>`),
     // tank track on a steep slope
     climber: svg(`<path d="M2 30L30 6v24z" fill="#5d4a2f"/>
       <g transform="rotate(-40 14 18)"><rect x="5" y="15" width="18" height="6" rx="3" fill="#334155" stroke="#94a3b8" stroke-width="1"/>

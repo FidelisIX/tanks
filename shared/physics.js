@@ -37,6 +37,24 @@
     { maxSlope: 12, uphillCost: 0 },
   ];
   const TELEPORT_MIN_DISTANCE = 40; // px to the nearest other tank
+  const TANK_FUEL = 100; // extra fuel per round per level of the "Großtank" upgrade
+  // Map types. On "islands" everything below WATER_LEVEL is sea: falling in costs WATER_SPLASH
+  // at once and WATER_TURN at the start of every own turn spent in the water.
+  const MAP_TYPES = {
+    hills: { name: 'Hügel' },
+    mountains: { name: 'Berge' },
+    plains: { name: 'Ebene' },
+    canyon: { name: 'Canyon' },
+    islands: { name: 'Inseln', water: true },
+  };
+  const MAP_ORDER = ['hills', 'mountains', 'plains', 'canyon', 'islands'];
+  const WATER_LEVEL = Math.round(H * 0.8);
+  const WATER_SPLASH = 25;
+  const WATER_TURN = 10;
+  // catch-up rules: bounty on the sole leader, shop discount for the sole last place
+  const BOUNTY_FACTOR = 0.5; // extra points per damage point against the leader
+  const BOUNTY_KILL = 25; // extra points for knocking out the leader
+  const LAST_PLACE_DISCOUNT = 0.25;
   const DRILL_SPEED = 2;
   const DRILL_FUSE = 28; // a digging drill goes off when it gets this close to an enemy tank
   // explosion damage: full at the centre, down to (1 - DAMAGE_FALLOFF) at radius + DAMAGE_REACH
@@ -60,10 +78,12 @@
     drill: { name: 'Bohrer', radius: 32, damage: 45, ammo: 0, drag: 0.8, drill: 150, desc: 'Gräbt sich nach dem Aufprall bis zu 150 px weiter durch die Erde. Mit Annäherungszünder: explodiert, sobald er beim Graben näher als 28 px an einen gegnerischen Panzer kommt, sonst am Ende der Strecke – trifft Gegner hinter Hügeln oder unter Erdhaufen.' },
     cluster: { name: 'Splitterbombe', radius: 20, damage: 20, ammo: 0, drag: 1, cluster: { count: 5, spread: 1.1 }, desc: 'Zerfällt am höchsten Punkt der Flugbahn in 5 Splitter (je 18 Schaden, Krater 18 px), die sich auffächern.' },
     trench: { name: 'Tunnelbohrer', radius: 14, damage: 0, ammo: 2, drag: 0.8, drill: 150, trench: true, desc: 'Gegenstück zum Erdklumpen: gräbt sich nach dem Aufprall bis zu 150 px durch die Erde und nimmt dabei die Erde entlang seines Weges weg (Rinne 28 px breit). Weil die Erde darüber nachsackt, entsteht ein offener Graben. Kein Explosionsschaden – aber wer den Boden verliert, bekommt Fallschaden.' },
-    nuke: { name: 'Atombombe', radius: 115, damage: 95, ammo: 0, drag: 0.5, desc: 'Riesiger Krater und fast tödlicher Schaden im ganzen Umkreis; bricht viel Boden weg (Fallschaden). Kaum windanfällig, sehr teuer.' },
+    nuke: { name: 'Atombombe', radius: 115, damage: 95, ammo: 0, drag: 0.5, nukeFx: true, desc: 'Riesiger Krater und fast tödlicher Schaden im ganzen Umkreis; bricht viel Boden weg (Fallschaden). Kaum windanfällig, sehr teuer.' },
+    motorball: { name: 'Motor-Ball', radius: 30, damage: 40, ammo: 0, drag: 1.1, roll: true, motor: { speed: 1.5, maxDist: 300, maxSlope: 3 }, desc: 'Ball mit Antrieb: rollt nach dem Aufprall in Flugrichtung weiter, auch bergauf (Steigung bis 3 : 1), höchstens 300 px. Explodiert an einem Panzer, an einer zu steilen Wand oder am Ende der Strecke; über Klippen fliegt er weiter.' },
+    hotshower: { name: 'Hot Shower', radius: 80, damage: 60, ammo: 0, drag: 0.5, spread: [-5, 0, 5], nukeFx: true, desc: 'Dreierfächer aus drei kleineren Atombomben (−5°, 0°, +5°): je 80 px Krater und bis zu 60 Schaden. Kaum windanfällig, sehr teuer.' },
     bomblet: { name: 'Splitter', radius: 18, damage: 18, ammo: 0, drag: 1.3 }, // spawned by cluster only
   };
-  const WEAPON_ORDER = ['shell', 'heavy', 'triple', 'dirt', 'ball', 'drill', 'cluster', 'nuke', 'trench'];
+  const WEAPON_ORDER = ['shell', 'heavy', 'triple', 'dirt', 'ball', 'drill', 'cluster', 'nuke', 'trench', 'motorball', 'hotshower'];
 
   // Shop between rounds. Items add to the inventory, upgrades are permanent for the match.
   // Prices were cut to 70 % (nuke 50 %) after player feedback on 2026-11-11.
@@ -77,6 +97,8 @@
     nuke: { name: 'Atombombe', price: 140, qty: 1, desc: 'riesiger Krater, fast tödlich im ganzen Umkreis' },
     shield: { name: 'Schild', price: 42, qty: 1, desc: 'Energieblase, kostet beim Einsatz den Zug' },
     trench: { name: 'Tunnelbohrer', price: 18, qty: 1, desc: 'gräbt einen Graben durch die Erde, ohne Explosionsschaden' },
+    motorball: { name: 'Motor-Ball', price: 30, qty: 1, desc: 'rollt mit Antrieb weiter, auch bergauf' },
+    hotshower: { name: 'Hot Shower', price: 220, qty: 1, desc: 'drei kleinere Atombomben im Fächer' },
     teleport: { name: 'Teleport', price: 50, qty: 1, desc: 'im eigenen Zug an eine angeklickte Stelle springen, kostet den Zug' },
     fuel: { name: 'Treibstoff', price: 14, qty: 100, desc: 'für die nächste Runde, zusätzlich zu den 300 pro Runde' },
   };
@@ -86,13 +108,14 @@
     shock: { name: 'Stoßdämpfer', desc: '−50 % Fallschaden', prices: [42, 63] },
     cannon: { name: 'Turbo-Kanone', desc: '+10 max. Kraft', prices: [49, 77] },
     climber: { name: 'Kletterketten', desc: 'steilere Hänge, weniger Verbrauch bergauf', prices: [50, 80] },
+    tank: { name: 'Großtank', desc: '+100 Treibstoff pro Runde, dauerhaft', prices: [40, 70] },
   };
   const REWARDS = { perDamage: 1, kill: 50, win: 75, base: 30 };
 
   function newInventory() {
     const ammo = {};
     for (const k of WEAPON_ORDER) ammo[k] = WEAPONS[k].ammo;
-    return { ammo, shields: 1, teleports: 0, fuel: ROUND_FUEL, upgrades: { armor: 0, shieldBoost: 0, shock: 0, cannon: 0, climber: 0 } };
+    return { ammo, shields: 1, teleports: 0, fuel: ROUND_FUEL, upgrades: { armor: 0, shieldBoost: 0, shock: 0, cannon: 0, climber: 0, tank: 0 } };
   }
 
   // Armor reduces the explosion damage a tank takes instead of adding hit points, so an
@@ -102,6 +125,9 @@
   }
   function damageFactor(inv) {
     return Math.max(0, 1 - ARMOR_REDUCTION * inv.upgrades.armor);
+  }
+  function roundFuel(inv) {
+    return ROUND_FUEL + TANK_FUEL * (inv.upgrades.tank || 0);
   }
   function climbing(inv) {
     return CLIMB[Math.min(CLIMB.length - 1, inv.upgrades.climber || 0)];
@@ -127,27 +153,75 @@
   }
 
   // terrain[x] = y coordinate of the ground surface (0 = top of screen)
-  function generateTerrain(seed) {
+  // terrain[x] = y coordinate of the ground surface (0 = top of screen)
+  function generateTerrain(seed, type = 'hills', count = 2) {
     const rng = mulberry32(seed);
-    const waves = [];
-    for (let i = 0; i < 5; i++) {
-      waves.push({
-        amp: (70 / (i + 1)) * (0.5 + rng()),
+    const terrain = new Array(W);
+    const clamp = (y, lo, hi) => Math.round(Math.min(hi, Math.max(lo, y)));
+    const waves = (n, ampBase) =>
+      Array.from({ length: n }, (_, i) => ({
+        amp: (ampBase / (i + 1)) * (0.5 + rng()),
         freq: ((i + 1) * (0.6 + rng() * 0.9) * Math.PI * 2) / W,
         phase: rng() * Math.PI * 2,
-      });
-    }
-    const base = H * (0.58 + rng() * 0.1);
-    const terrain = new Array(W);
-    for (let x = 0; x < W; x++) {
-      let y = base;
-      for (const w of waves) y += w.amp * Math.sin(w.freq * x + w.phase);
-      terrain[x] = Math.round(Math.min(H - 40, Math.max(H * 0.28, y)));
+      }));
+    const sum = (ws, x, fn = Math.sin) => ws.reduce((y, w) => y + w.amp * fn(w.freq * x + w.phase), 0);
+
+    if (type === 'mountains') {
+      // sharp ridges: inverted |sin| gives pointed peaks and round valleys
+      const ridges = waves(3, 190);
+      const detail = waves(3, 18);
+      for (let x = 0; x < W; x++) {
+        const y = H * 0.92 - sum(ridges, x, (v) => Math.abs(Math.sin(v))) + sum(detail, x);
+        terrain[x] = clamp(y, H * 0.14, H - 30);
+      }
+    } else if (type === 'plains') {
+      const base = H * (0.72 + rng() * 0.06);
+      const dunes = waves(4, 22);
+      for (let x = 0; x < W; x++) terrain[x] = clamp(base + sum(dunes, x), H * 0.55, H - 40);
+    } else if (type === 'canyon') {
+      // two plateaus with a deep gorge in between; walls are steep
+      const left = H * (0.4 + rng() * 0.1);
+      const right = H * (0.4 + rng() * 0.1);
+      const gx = W * (0.42 + rng() * 0.16);
+      const gw = 70 + rng() * 50;
+      const floor = H - 45;
+      const noise = waves(3, 10);
+      for (let x = 0; x < W; x++) {
+        const plateau = x < gx ? left : right;
+        const d = Math.abs(x - gx);
+        const k = d < gw ? 1 : d < gw + 25 ? 1 - (d - gw) / 25 : 0; // 25 px steep wall
+        terrain[x] = clamp(plateau + (floor - plateau) * k + sum(noise, x), H * 0.25, H - 30);
+      }
+    } else if (type === 'islands') {
+      // sea floor below the water line, one island per player slot plus a spare one
+      const n = Math.max(count, 2) + 1 + Math.floor(rng() * 2);
+      const islands = Array.from({ length: n }, (_, i) => ({
+        x: (W * (i + 0.5)) / n + (rng() - 0.5) * (W / n) * 0.3,
+        half: 70 + rng() * 50,
+        top: H * (0.5 + rng() * 0.15),
+      }));
+      const noise = waves(3, 8);
+      for (let x = 0; x < W; x++) {
+        let y = H - 25 + sum(noise, x);
+        for (const isl of islands) {
+          const d = Math.abs(x - isl.x) / isl.half;
+          if (d < 1) y = Math.min(y, isl.top + (H - 25 - isl.top) * (1 - Math.cos((d * Math.PI) / 2)) ** 1.5);
+        }
+        terrain[x] = clamp(y, H * 0.3, H - 15);
+      }
+    } else {
+      const ws = waves(5, 70);
+      const base = H * (0.58 + rng() * 0.1);
+      for (let x = 0; x < W; x++) terrain[x] = clamp(base + sum(ws, x), H * 0.28, H - 40);
     }
     return terrain;
   }
 
-  function placeTanks(terrain, count, seed) {
+  function waterLevel(type) {
+    return MAP_TYPES[type] && MAP_TYPES[type].water ? WATER_LEVEL : null;
+  }
+
+  function placeTanks(terrain, count, seed, water = null) {
     const rng = mulberry32(seed ^ 0x9e3779b9);
     const xs = [];
     for (let i = 0; i < count; i++) {
@@ -158,6 +232,20 @@
     for (let i = xs.length - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
       [xs[i], xs[j]] = [xs[j], xs[i]];
+    }
+    // on maps with water, move every tank to the nearest dry land
+    if (water !== null) {
+      const dry = (x) => terrain[x] < water - 12;
+      for (let i = 0; i < xs.length; i++) {
+        if (dry(xs[i])) continue;
+        for (let d = 1; d < W; d++) {
+          const cand = [xs[i] - d, xs[i] + d].find((x) => x >= 20 && x < W - 20 && dry(x) && xs.every((o, j) => j === i || Math.abs(o - x) > 60));
+          if (cand !== undefined) {
+            xs[i] = cand;
+            break;
+          }
+        }
+      }
     }
     // flatten a pad under each tank and blend it into the terrain with ramps, so the pad has
     // no step at its edges that the tank could not drive over
@@ -246,6 +334,8 @@
     const dt = 1 / SUBSTEPS;
     const path = [[round1(x), round1(y)]];
     let entry = -1; // path index where the projectile started digging
+    let motorDir = 0; // driven ball: direction it keeps rolling in
+    let motorDist = 0;
     const impact = () => {
       path.push([round1(x), round1(y)]);
       return { path, entry, impact: { x: round1(x), y: round1(y) } };
@@ -271,6 +361,7 @@
             if (weapon.roll) {
               // touch down: keep the velocity component along the slope
               const sl = slopeAt(terrain, x);
+              if (weapon.motor && !motorDir) motorDir = Math.sign(vx) || 1;
               vx = ((vx + vy * sl) / (1 + sl * sl)) * 0.8;
               vy = 0;
               y = terrain[Math.floor(x)] - BALL_RADIUS;
@@ -297,10 +388,14 @@
           // explode when the drill comes out into the open air or has dug far enough
           if (y < terrain[Math.floor(x)] - 3 || drilled >= weapon.drill) return impact();
         } else {
-          const sl = slopeAt(terrain, x);
-          vx += ((GRAVITY * sl) / (1 + sl * sl)) * dt;
-          vx -= Math.sign(vx) * Math.min(Math.abs(vx), ROLL_FRICTION * dt);
-          vx *= 1 - 0.006 * dt; // rolling resistance grows with speed
+          if (weapon.motor) {
+            vx = motorDir * weapon.motor.speed; // driven: same speed uphill and downhill
+          } else {
+            const sl = slopeAt(terrain, x);
+            vx += ((GRAVITY * sl) / (1 + sl * sl)) * dt;
+            vx -= Math.sign(vx) * Math.min(Math.abs(vx), ROLL_FRICTION * dt);
+            vx *= 1 - 0.006 * dt; // rolling resistance grows with speed
+          }
           const nx = x + vx * dt;
           if (nx < 0 || nx >= W) {
             x = nx;
@@ -309,8 +404,13 @@
           }
           const ground = terrain[Math.floor(x)];
           const next = terrain[Math.floor(nx)];
-          const limit = Math.max(3, 2.5 * Math.abs(nx - x));
-          if (ground - next > limit) {
+          const limit = weapon.motor
+            ? weapon.motor.maxSlope * Math.max(1, Math.abs(Math.floor(nx) - Math.floor(x)))
+            : Math.max(3, 2.5 * Math.abs(nx - x));
+          if (weapon.motor) motorDist += Math.abs(nx - x);
+          if (weapon.motor && (ground - next > limit || motorDist >= weapon.motor.maxDist)) {
+            return impact(); // driven ball: explodes at a wall that is too steep or at the end of its range
+          } else if (ground - next > limit) {
             vx *= -0.4; // too steep: bounce off the wall
           } else if (next - ground > limit) {
             x = nx; // edge of a cliff: fly again
@@ -322,7 +422,7 @@
           if (hitsTank(tanks, shooterId, x, y, MAX_TICKS)) return impact();
         }
       }
-      if (mode === 'roll') {
+      if (mode === 'roll' && !weapon.motor) {
         rollTicks++;
         slowTicks = Math.abs(vx) < 0.08 ? slowTicks + 1 : 0;
         if (slowTicks > 15 || rollTicks > MAX_ROLL_TICKS) return impact();
@@ -415,7 +515,8 @@
   return {
     W, H, GRAVITY, MAX_WIND, SHIELD_RADIUS, SHIELD_HP, TANK_RADIUS, BARREL, TURRET_Y, ANIM_SPEED, TURN_SECONDS,
     SHOP_SECONDS, ROUND_OPTIONS, DAMAGE_REACH, DAMAGE_FALLOFF, FALL_MIN, FALL_DIV, FALL_MAX, BASE_HP, BASE_MAX_POWER, MAX_PLAYERS, COLORS, WEAPONS, WEAPON_ORDER, SHOP_ITEMS, UPGRADES, REWARDS,
-    ARMOR_REDUCTION, WIND_DRIFT, DRILL_FUSE, ROUND_FUEL, CLIMB, TELEPORT_MIN_DISTANCE, climbing, newInventory, maxHp, damageFactor, maxPower, shieldHp, fallFactor,
+    ARMOR_REDUCTION, WIND_DRIFT, DRILL_FUSE, TANK_FUEL, MAP_TYPES, MAP_ORDER, WATER_LEVEL, WATER_SPLASH, WATER_TURN,
+    BOUNTY_FACTOR, BOUNTY_KILL, LAST_PLACE_DISCOUNT, roundFuel, waterLevel, ROUND_FUEL, CLIMB, TELEPORT_MIN_DISTANCE, climbing, newInventory, maxHp, damageFactor, maxPower, shieldHp, fallFactor,
     generateTerrain, placeTanks, carve, addDirt, applyCrater, barrelTip, simulateShot, fireShells,
     explosionDamage, settleTanks,
   };

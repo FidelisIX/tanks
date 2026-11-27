@@ -24,6 +24,7 @@
   let driveTimer = null;
   let shakeUntil = 0;
   let targeting = false; // choosing a teleport target
+  let currentMap = { type: 'hills', water: null };
   let hoverX = null;
   let countdownEnd = 0;
   let lastMsgAt = 0;
@@ -219,6 +220,8 @@
         break;
       case 'tanks':
         tanks = msg.tanks;
+        waterFloater(msg.turnDamage);
+        renderScoreboard();
         break;
       case 'teleport': {
         tanks = msg.tanks;
@@ -297,6 +300,8 @@
     $('bot-row').classList.toggle('hidden', !isHost);
     $('btn-bot').disabled = room.players.length >= P.MAX_PLAYERS;
     $('rounds').value = String(room.rounds);
+    $('map-type').value = room.mapType || 'random';
+    $('map-type').disabled = !isHost;
     $('rounds').disabled = !isHost;
     $('btn-start').classList.toggle('hidden', !isHost);
     $('btn-start').disabled = room.players.length < 2;
@@ -354,27 +359,31 @@
       .filter((p) => lastRound.earnings[p.id])
       .map((p) => {
         const e = lastRound.earnings[p.id];
-        return `<tr><td>${name(p.id)}</td><td>${e.damage}</td><td>${e.kills}</td><td>${e.win}</td><td>${e.base}</td><td><b>+${e.total}</b></td><td>${p.score}</td></tr>`;
+        return `<tr><td>${name(p.id)}</td><td>${e.damage}</td><td>${e.kills}</td><td>${e.win}</td><td>${e.base}</td><td>${e.bounty || 0}</td><td><b>+${e.total}</b></td><td>${p.score}</td></tr>`;
       })
       .join('');
     if (rows) {
-      html += `<table class="earn"><tr><th></th><th>Schaden</th><th>Abschüsse</th><th>Sieg</th><th>Basis</th><th>Runde</th><th>Gesamt</th></tr>${rows}</table>`;
+      html += `<table class="earn"><tr><th></th><th>Schaden</th><th>Abschüsse</th><th>Sieg</th><th>Basis</th><th title="50 % mehr Punkte für Schaden am Führenden, +25 für seinen Abschuss">Kopfgeld</th><th>Runde</th><th>Gesamt</th></tr>${rows}</table>`;
     }
 
     if (room.state === 'shop') {
       const m = me();
       const inv = m.inv;
       const owned = (k) => (k === 'shield' ? inv.shields : k === 'fuel' ? Math.floor(inv.fuel) : k === 'teleport' ? inv.teleports || 0 : inv.ammo[k]);
+      if (room.discountId === myId) {
+        html += `<p class="discount-note">Letzter Platz: ${Math.round(P.LAST_PLACE_DISCOUNT * 100)} % Rabatt auf alles im Shop</p>`;
+      }
       html += `<div class="shop-head"><b>Shop</b><span>💰 ${m.money}</span><button class="link" data-help-open>Was bringt was?</button><span id="shop-timer"></span></div><div class="shop">`;
       for (const [k, it] of Object.entries(P.SHOP_ITEMS)) {
-        html += `<button data-buy="${k}" ${m.money < it.price || m.ready ? 'disabled' : ''} title="${esc(it.desc || '')}">
-          ${ICONS[k] || ''}<span>${it.name}${it.qty > 1 ? ` +${it.qty}` : ''}</span><small>Vorrat: ${owned(k)}</small><b>${it.price} 💰</b></button>`;
+        const price = myPrice(it.price);
+        html += `<button data-buy="${k}" ${m.money < price || m.ready ? 'disabled' : ''} title="${esc(it.desc || '')}">
+          ${ICONS[k] || ''}<span>${it.name}${it.qty > 1 ? ` +${it.qty}` : ''}</span><small>Vorrat: ${owned(k)}</small><b>${priceLabel(it.price)}</b></button>`;
       }
       for (const [k, u] of Object.entries(P.UPGRADES)) {
         const lvl = inv.upgrades[k];
-        const price = u.prices[lvl];
+        const price = u.prices[lvl] === undefined ? undefined : myPrice(u.prices[lvl]);
         html += `<button data-upgrade="${k}" class="upg" ${price === undefined || m.money < price || m.ready ? 'disabled' : ''}>
-          ${ICONS[k] || ''}<span>${u.name} ${'★'.repeat(lvl)}${'☆'.repeat(u.prices.length - lvl)}</span><small>${u.desc}</small><b>${price === undefined ? 'max.' : `${price} 💰`}</b></button>`;
+          ${ICONS[k] || ''}<span>${u.name} ${'★'.repeat(lvl)}${'☆'.repeat(u.prices.length - lvl)}</span><small>${u.desc}</small><b>${price === undefined ? 'max.' : priceLabel(u.prices[lvl])}</b></button>`;
       }
       html += `</div><div class="ready-list">${players
         .map((p) => `<span class="${p.ready ? 'ok' : ''}">${p.ready ? '✓' : '…'} ${esc(p.name)}</span>`)
@@ -422,7 +431,10 @@
     phase = 'aim';
     overlayVisible = false;
     $('overlay').classList.add('hidden');
-    $('round-label').textContent = `Runde ${msg.round}/${msg.rounds}`;
+    if (msg.map) currentMap = msg.map;
+    const mapName = P.MAP_TYPES[currentMap.type] ? P.MAP_TYPES[currentMap.type].name : '';
+    $('round-label').textContent = `Runde ${msg.round}/${msg.rounds}${mapName ? ` · ${mapName}` : ''}`;
+    waterFloater(msg.turnDamage);
     show('game');
     updateControls();
   }
@@ -454,7 +466,7 @@
       const label = ammo === -1 ? '∞' : `×${ammo}`;
       return `<button data-w="${k}" class="weapon ${t && t.weapon === k ? 'active' : ''}" ${
         !mine || ammo === 0 ? 'disabled' : ''
-      } title="${w.name} (Taste ${i + 1})"><span class="key">${i + 1}</span>${ICONS[k] || ''}<small>${label}</small></button>`;
+      } title="${w.name}${weaponKey(i) ? ` (Taste ${weaponKey(i)})` : ''}"><span class="key">${weaponKey(i)}</span>${ICONS[k] || ''}<small>${label}</small></button>`;
     }).join('');
     const weaponNames = `<div class="weapon-name">${t ? `${P.WEAPONS[t.weapon].name} <small>${
       t.ammo[t.weapon] === -1 ? '∞' : `×${t.ammo[t.weapon]}`
@@ -515,7 +527,12 @@
         const p = room && room.players.find((pp) => pp.id === t.id);
         const hpPct = Math.max(0, Math.round((100 * t.hp) / t.maxHp));
         const hpColor = hpPct > 50 ? '#6fd36f' : hpPct > 25 ? '#f2c230' : '#e8553b';
-        const tags = [t.id === myId ? 'du' : '', p && p.isBot ? '🤖' : '', isOffline(t.id) ? 'getrennt' : ''].filter(Boolean).join(' · ');
+        const tags = [
+          t.id === myId ? 'du' : '',
+          p && p.isBot ? '🤖' : '',
+          isOffline(t.id) ? 'getrennt' : '',
+          room && room.leaderId === t.id ? '<span class="bounty" title="Schaden an diesem Panzer bringt 50 % mehr Punkte">🎯 Kopfgeld</span>' : '',
+        ].filter(Boolean).join(' · ');
         return `<div class="sb${t.id === currentId && phase !== 'idle' ? ' active' : ''}${t.alive ? '' : ' dead'}" style="--c:${t.color}">
           <div class="sb-name"><span class="dot" style="background:${t.color}"></span>${esc(t.name)}${tags ? `<small>${tags}</small>` : ''}
             <span class="sb-hpnum">${t.alive ? `❤ ${t.hp}/${t.maxHp}` : '💀 zerstört'}${t.shield > 0 ? ` <span class="shield">🛡 ${t.shield}</span>` : ''}</span></div>
@@ -558,6 +575,36 @@
     updateControls();
   }
 
+  // number keys 1–9 and 0 select the first ten weapons; Q/E cycle through all available ones
+  function weaponKey(i) {
+    return i < 9 ? String(i + 1) : i === 9 ? '0' : '';
+  }
+  function cycleWeapon(step) {
+    const t = myTank();
+    const avail = P.WEAPON_ORDER.filter((k) => t.ammo[k] !== 0);
+    const i = avail.indexOf(t.weapon);
+    setAim({ weapon: avail[(i + step + avail.length) % avail.length] });
+  }
+
+  // shop prices for this player (last place gets a discount)
+  function myPrice(price) {
+    return room && room.discountId === myId ? Math.round(price * (1 - P.LAST_PLACE_DISCOUNT)) : price;
+  }
+  function priceLabel(price) {
+    const p = myPrice(price);
+    return p === price ? `${price} 💰` : `<s>${price}</s> ${p} 💰`;
+  }
+
+  function drawWater(level, now) {
+    ctx.fillStyle = 'rgba(40, 110, 190, 0.55)';
+    ctx.fillRect(0, level, P.W, P.H - level);
+    ctx.strokeStyle = 'rgba(160, 210, 255, 0.9)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = 0; x <= P.W; x += 8) ctx.lineTo(x, level + Math.sin(x / 30 + now / 400) * 2);
+    ctx.stroke();
+  }
+
   // the server takes at most one step per 25 ms, so faster key repeat only wastes messages
   let lastDrive = 0;
   function drive(dir) {
@@ -581,7 +628,12 @@
     canvas.classList.remove('targeting');
   }
   function teleportTargetOk(x) {
+    if (currentMap.water !== null && terrain && terrain[x] >= currentMap.water) return false; // not into the sea
     return x >= 15 && x <= P.W - 15 && !tanks.some((t) => t.alive && t.id !== myId && Math.abs(t.x - x) < P.TELEPORT_MIN_DISTANCE);
+  }
+  function waterFloater(td) {
+    const t = td && tankById(td.id);
+    if (t) floaters.push({ x: t.x, y: t.y - 40, text: `Wasser -${td.dmg}`, age: 0, color: '#5fb3ff' });
   }
   function canvasX(e) {
     const r = canvas.getBoundingClientRect();
@@ -612,7 +664,7 @@
       if (s.explosion && !anim.applied[i] && anim.tick >= s.explosion.tick) {
         anim.applied[i] = true;
         P.applyCrater(terrain, s.explosion);
-        const nuke = s.w === 'nuke';
+        const nuke = !!P.WEAPONS[s.w].nukeFx;
         // trench digger: dust along the trench instead of a fireball
         const earthy = s.explosion.dirt || !!s.explosion.dig;
         if (s.explosion.dig) {
@@ -635,7 +687,9 @@
     for (const t of tanks) {
       const old = before.get(t.id) || t;
       const fell = msg.hits.filter((h) => h.id === t.id && h.fall).reduce((a, h) => a + h.dmg, 0);
-      const lost = old.hp - t.hp - fell;
+      const wet = msg.hits.filter((h) => h.id === t.id && h.water).reduce((a, h) => a + h.dmg, 0);
+      const lost = old.hp - t.hp - fell - wet;
+      if (wet > 0) floaters.push({ x: t.x + 24, y: t.y - 24, text: `Wasser -${wet}`, age: 0, color: '#5fb3ff' });
       const blocked = (old.shield || 0) - (t.shield || 0);
       if (blocked > 0) floaters.push({ x: t.x + 22, y: t.y - 58, text: `🛡 -${blocked}`, age: 0, color: '#7fd8ff' });
       if (lost > 0) floaters.push({ x: t.x, y: t.y - 40, text: `-${lost}`, age: 0, color: '#ff6b5a' });
@@ -720,6 +774,7 @@
 
     if (terrain) drawTerrain();
     for (const t of tanks) drawTank(t, now);
+    if (currentMap.water !== null && currentMap.water !== undefined) drawWater(currentMap.water, now);
     if (anim) drawProjectiles();
     drawEffects();
     drawFloaters();
@@ -866,7 +921,7 @@
         ctx.lineTo(x, 2);
         ctx.fill();
       }
-      const isBall = s.w === 'ball';
+      const isBall = s.w === 'ball' || s.w === 'motorball';
       ctx.fillStyle = s.explosion && s.explosion.dirt ? '#8a6a3c' : isBall ? '#d9dde4' : '#fff3c4';
       ctx.beginPath();
       ctx.arc(x, y, isBall ? 5 : s.w === 'bomblet' ? 3 : 4, 0, Math.PI * 2);
@@ -1002,7 +1057,8 @@
     ctx.font = '600 13px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = ok ? '#c4b5fd' : '#e8553b';
-    ctx.fillText(ok ? 'hierhin teleportieren' : 'zu nah an einem Panzer', x, Math.max(20, y - 32));
+    const wet = currentMap.water !== null && currentMap.water !== undefined && y >= currentMap.water;
+    ctx.fillText(ok ? 'hierhin teleportieren' : wet ? 'nicht ins Wasser' : 'zu nah an einem Panzer', x, Math.max(20, y - 32));
   }
 
   function drawWindSock() {
@@ -1088,6 +1144,7 @@
   $('code').addEventListener('keydown', (e) => e.key === 'Enter' && $('btn-join').click());
   $('btn-start').onclick = () => send({ type: 'start' });
   $('rounds').onchange = (e) => send({ type: 'settings', rounds: Number(e.target.value) });
+  $('map-type').onchange = (e) => send({ type: 'settings', mapType: e.target.value });
   $('overlay-card').onclick = (e) => {
     const b = e.target.closest('button');
     if (!b || b.disabled) return;
@@ -1171,9 +1228,13 @@
       case 'A': drive(-1); break;
       case 'd':
       case 'D': drive(1); break;
+      case 'q':
+      case 'Q': cycleWeapon(-1); break;
+      case 'e':
+      case 'E': cycleWeapon(1); break;
       default: {
-        const i = Number(e.key) - 1;
-        if (P.WEAPON_ORDER[i]) setAim({ weapon: P.WEAPON_ORDER[i] });
+        const i = e.key === '0' ? 9 : Number(e.key) - 1;
+        if (/^[0-9]$/.test(e.key) && P.WEAPON_ORDER[i]) setAim({ weapon: P.WEAPON_ORDER[i] });
         else return;
       }
     }

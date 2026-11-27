@@ -89,6 +89,11 @@ tatsächlich erlittenen Schaden, an einem gepanzerten Panzer verdient er also we
   Explosion sackt die Erde darüber nach und es entsteht ein tiefer Krater.
 - **Wind:** Stärke 0–${P.MAX_WIND}, zu Beginn jeder Runde ausgewürfelt, danach ändert er sich pro Zug um höchstens ±${P.WIND_DRIFT}.
   In der Höhe weht er stärker als am Boden, hohe Bogenschüsse werden also stärker abgetrieben.
+- **Karten:** Hügel, Berge, Ebene, Canyon oder Inseln; der Gastgeber wählt im Warteraum einen Typ oder „Zufall“ (jede Runde ein anderer).
+  Auf den **Inseln** ist unterhalb der Wasserlinie Meer: Wer ins Wasser stürzt, bekommt sofort ${P.WATER_SPLASH} Schaden (zählt für den
+  Schützen) und zu Beginn jedes eigenen Zugs im Wasser ${P.WATER_TURN} weitere. Ins Wasser fahren oder teleportieren geht nicht.
+- **Aufholen:** Wer zu Rundenbeginn allein vorne liegt, trägt ein Kopfgeld: Schaden an ihm bringt ${Math.round(P.BOUNTY_FACTOR * 100)} % mehr Punkte,
+  sein Abschuss ${P.BOUNTY_KILL} extra. Wer im Shop allein auf dem letzten Platz liegt, bekommt ${Math.round(P.LAST_PLACE_DISCOUNT * 100)} % Rabatt auf alles.
 - **Punkte = Geld:** ${R.perDamage} pro Schadenspunkt am Gegner (auch auf den Schild und Fallschaden durch deinen Krater),
   ${R.kill} pro Abschuss, ${R.win} für den Rundensieg, ${R.base} Grundbetrag pro Runde. Schaden über die Zerstörung hinaus zählt nicht.
 

@@ -117,7 +117,7 @@ function newPlayer(fields) {
     ws: null, connected: true, isBot: false, difficulty: null,
     name: 'Panzer', color: null, room: null, graceTimer: null,
     inv: P.newInventory(), money: 0, score: 0, ready: false, vote: false,
-    stats: { damage: 0, kills: 0 }, match: newMatchStats(), lastMove: 0,
+    stats: { damage: 0, kills: 0, bounty: 0 }, match: newMatchStats(), lastMove: 0,
     ...fields,
   };
 }
@@ -142,6 +142,9 @@ function roomInfo(room) {
     rounds: room.rounds,
     round: room.round,
     shopTimeLeft: room.state === 'shop' ? remaining(room.shopDeadline) : 0,
+    mapType: room.mapType || 'random',
+    leaderId: room.leaderId || null, // has a bounty on them this round
+    discountId: room.state === 'shop' ? room.discountId || null : null, // gets the last-place discount in the shop
     countdownLeft: room.state === 'countdown' ? remaining(room.countdownDeadline) : 0,
     players: room.players.map((p) => ({
       id: p.id, name: p.name, color: p.color, connected: p.connected, isBot: p.isBot, difficulty: p.difficulty,
@@ -165,7 +168,8 @@ function publicTanks(room) {
 function scoreOf(room, id) {
   const p = playerById(room, id);
   if (!p) return { score: 0, roundPts: 0, money: 0 };
-  return { score: p.score, money: p.money, roundPts: p.stats.damage * P.REWARDS.perDamage + p.stats.kills * P.REWARDS.kill };
+  const st = p.stats;
+  return { score: p.score, money: p.money, roundPts: st.damage * P.REWARDS.perDamage + st.kills * P.REWARDS.kill + (st.bounty || 0) };
 }
 
 function randomWind() {
@@ -226,18 +230,52 @@ function startRound(room) {
   clearTimeout(room.shopTimer);
   room.round++;
   const seed = crypto.randomInt(1, 2 ** 31);
-  const terrain = P.generateTerrain(seed);
-  const xs = P.placeTanks(terrain, room.players.length, seed);
+  const type = pickMapType(room);
+  const terrain = P.generateTerrain(seed, type, room.players.length);
+  const water = P.waterLevel(type);
+  const xs = P.placeTanks(terrain, room.players.length, seed, water);
+  room.leaderId = soleLeader(room);
   const tanks = room.players.map((p, i) => {
     p.ready = false;
-    p.stats = { damage: 0, kills: 0 };
+    p.stats = { damage: 0, kills: 0, bounty: 0 };
     return makeTank(p, xs[i], terrain);
   });
   room.state = 'playing';
-  room.game = { terrain, tanks, turnIdx: crypto.randomInt(tanks.length) - 1, wind: randomWind(), turns: 0, phase: 'aim', timer: null };
+  room.game = {
+    terrain, tanks, map: { type, water }, turnIdx: crypto.randomInt(tanks.length) - 1, wind: randomWind(), turns: 0, phase: 'aim', timer: null,
+  };
+  room.lastMapType = type;
   broadcast(room, roomInfo(room));
   nextTurn(room);
 }
+
+// "random" picks a different type than last round
+function pickMapType(room) {
+  const chosen = room.mapType || 'random';
+  if (P.MAP_TYPES[chosen]) return chosen;
+  const options = P.MAP_ORDER.filter((t) => t !== room.lastMapType);
+  return options[crypto.randomInt(options.length)];
+}
+
+// The player who is ahead on total points on their own (and has any points) carries a bounty.
+function soleLeader(room) {
+  const ranked = [...room.players].sort((a, b) => b.score - a.score);
+  if (ranked.length < 2 || ranked[0].score <= 0 || ranked[0].score === ranked[1].score) return null;
+  return ranked[0].id;
+}
+
+// The player who is last on total points on their own gets a discount in the shop.
+function soleLast(room) {
+  const ranked = [...room.players].sort((a, b) => a.score - b.score);
+  if (ranked.length < 2 || ranked[0].score === ranked[1].score) return null;
+  return ranked[0].id;
+}
+
+function priceFor(room, player, price) {
+  return room.discountId === player.id ? Math.round(price * (1 - P.LAST_PLACE_DISCOUNT)) : price;
+}
+
+const isInWater = (g, t) => g.map && g.map.water !== null && g.map.water !== undefined && t.y >= g.map.water;
 
 function nextTurn(room) {
   const g = room.game;
@@ -247,6 +285,20 @@ function nextTurn(room) {
 
   do g.turnIdx = (g.turnIdx + 1) % g.tanks.length;
   while (!g.tanks[g.turnIdx].alive);
+
+  // a tank that starts its turn in the water loses some hit points (not credited to anyone)
+  let turnDamage = null;
+  const current = g.tanks[g.turnIdx];
+  if (isInWater(g, current)) {
+    const dmg = Math.min(current.hp, P.WATER_TURN);
+    current.hp -= dmg;
+    turnDamage = { id: current.id, dmg };
+    if (current.hp <= 0) {
+      current.alive = false;
+      broadcast(room, { type: 'tanks', tanks: publicTanks(room), turnDamage });
+      return nextTurn(room);
+    }
+  }
 
   g.turns = (g.turns || 0) + 1; // missing in rooms backed up before the wind drift existed
   if (g.turns > 1) g.wind = driftWind(g.wind);
@@ -262,6 +314,8 @@ function nextTurn(room) {
     timeLeft: ms,
     round: room.round,
     rounds: room.rounds,
+    map: g.map,
+    turnDamage,
     terrain: g.terrain,
     tanks: publicTanks(room),
   });
@@ -286,8 +340,9 @@ function endRound(room, winner) {
       kills: p.stats.kills * R.kill,
       win: winner && winner.id === p.id ? R.win : 0,
       base: R.base,
+      bounty: p.stats.bounty || 0,
     };
-    e.total = e.damage + e.kills + e.win + e.base;
+    e.total = e.damage + e.kills + e.win + e.base + e.bounty;
     p.money += e.total;
     p.score += e.total;
     if (e.win) p.match.roundWins++;
@@ -313,10 +368,11 @@ function endRound(room, winner) {
 
 function openShop(room, ms = P.SHOP_SECONDS * 1000) {
   room.state = 'shop';
+  room.discountId = soleLast(room);
   room.shopDeadline = Date.now() + ms;
   for (const p of room.players) {
     p.ready = false;
-    p.inv.fuel = P.ROUND_FUEL; // refilled for the next round; fuel bought in the shop comes on top
+    p.inv.fuel = P.roundFuel(p.inv); // refilled for the next round; fuel bought in the shop comes on top
   }
   for (const b of room.players.filter((p) => p.isBot)) botShop(room, b);
   clearTimeout(room.shopTimer);
@@ -334,14 +390,17 @@ function buy(room, player, msg) {
     const u = P.UPGRADES[msg.upgrade];
     if (!u) return false;
     const level = player.inv.upgrades[msg.upgrade] || 0; // missing in inventories from older backups
-    const price = u.prices[level];
+    const price = u.prices[level] === undefined ? undefined : priceFor(room, player, u.prices[level]);
     if (price === undefined || player.money < price) return false;
     player.money -= price;
     player.inv.upgrades[msg.upgrade] = level + 1;
+    if (msg.upgrade === 'tank') player.inv.fuel += P.TANK_FUEL; // the bigger tank already counts for the next round
   } else {
     const item = P.SHOP_ITEMS[msg.item];
-    if (!item || player.money < item.price) return false;
-    player.money -= item.price;
+    if (!item) return false;
+    const price = priceFor(room, player, item.price);
+    if (player.money < price) return false;
+    player.money -= price;
     if (msg.item === 'shield') player.inv.shields += item.qty;
     else if (msg.item === 'teleport') player.inv.teleports = (player.inv.teleports || 0) + item.qty;
     else if (msg.item === 'fuel') player.inv.fuel += item.qty;
@@ -413,6 +472,7 @@ function fire(room, tank) {
   let shotDamage = 0;
   const credit = (victim, amount) => {
     if (!shooter || victim.id === tank.id) return;
+    if (victim.id === room.leaderId) shooter.stats.bounty += Math.round(amount * P.BOUNTY_FACTOR);
     shooter.stats.damage += amount;
     shooter.match.damage += amount;
     shotDamage += amount;
@@ -443,12 +503,25 @@ function fire(room, tank) {
     credit(t, dmg);
     hits.push({ id, dmg, absorbed: 0, fall: true });
   }
+  // islands: tanks that ended up in the water take a splash once
+  for (const t of g.tanks) {
+    if (!t.alive) continue;
+    const wet = isInWater(g, t);
+    if (wet && !t.inWater && t.hp > 0) {
+      const dmg = Math.min(t.hp, P.WATER_SPLASH);
+      t.hp -= dmg;
+      credit(t, dmg);
+      hits.push({ id: t.id, dmg, absorbed: 0, water: true });
+    }
+    t.inWater = wet;
+  }
   for (const t of g.tanks) {
     if (t.alive && t.hp <= 0) {
       t.alive = false;
       if (shooter && aliveBefore.has(t.id) && t.id !== tank.id) {
         shooter.stats.kills++;
         shooter.match.kills++;
+        if (t.id === room.leaderId) shooter.stats.bounty += P.BOUNTY_KILL;
       }
     }
   }
@@ -457,7 +530,7 @@ function fire(room, tank) {
   }
 
   const end = Math.max(...shells.map((s) => s.startTick + s.path.length));
-  const nuked = shells.some((s) => s.w === 'nuke' && s.explosion);
+  const nuked = shells.some((s) => P.WEAPONS[s.w].nukeFx && s.explosion);
   const animMs = (end / P.ANIM_SPEED) * (1000 / 60) + 1600 + (nuked ? 2200 : 0); // let the mushroom cloud play out
   if (tank.ammo[weapon] === 0) tank.weapon = 'shell';
   broadcast(room, {
@@ -492,6 +565,7 @@ function teleport(room, tank, x) {
   x = Math.round(Number(x));
   if (!Number.isFinite(x) || x < 15 || x > P.W - 15) return;
   if (g.tanks.some((t) => t.alive && t.id !== tank.id && Math.abs(t.x - x) < P.TELEPORT_MIN_DISTANCE)) return;
+  if (g.map && g.map.water !== null && g.map.water !== undefined && g.terrain[x] >= g.map.water) return; // not into the sea
   tank.inv.teleports--;
   const from = { x: tank.x, y: tank.y };
   tank.x = x;
@@ -512,6 +586,7 @@ function move(room, tank, dir) {
   const ny = g.terrain[nx];
   const rise = tank.y - ny; // > 0 uphill
   if (rise > climb.maxSlope * MOVE_STEP || -rise > 4 * MOVE_STEP) return;
+  if (g.map && g.map.water !== null && g.map.water !== undefined && ny >= g.map.water && tank.y < g.map.water) return; // no driving into the sea
   const cost = MOVE_STEP + Math.max(0, rise) * climb.uphillCost;
   if (tank.inv.fuel < cost) return;
   tank.x = nx;
@@ -612,6 +687,7 @@ function sendSync(room, player) {
       currentId: g.currentId,
       wind: g.wind,
       phase: g.phase,
+      map: g.map,
       timeLeft: remaining(g.deadline),
       round: room.round,
       rounds: room.rounds,
@@ -680,6 +756,9 @@ function snapshot(room) {
     state: room.state,
     rounds: room.rounds,
     round: room.round,
+    mapType: room.mapType || 'random',
+    leaderId: room.leaderId || null,
+    discountId: room.discountId || null,
     lastRoundOver: room.lastRoundOver || null,
     left: {
       turn: g ? remaining(g.deadline) : 0,
@@ -698,13 +777,17 @@ function snapshot(room) {
       wind: g.wind,
       currentId: g.currentId,
       phase: g.phase,
+      map: g.map || { type: 'hills', water: null },
     },
   };
 }
 
 function restore(snap) {
   if (snap.v !== SNAPSHOT_VERSION || rooms.has(snap.code)) return rooms.get(snap.code) || null;
-  const room = { code: snap.code, hostId: snap.hostId, state: snap.state, rounds: snap.rounds, round: snap.round, players: [], game: null, lastRoundOver: snap.lastRoundOver };
+  const room = {
+    code: snap.code, hostId: snap.hostId, state: snap.state, rounds: snap.rounds, round: snap.round, players: [], game: null,
+    lastRoundOver: snap.lastRoundOver, mapType: snap.mapType || 'random', leaderId: snap.leaderId || null, discountId: snap.discountId || null,
+  };
   for (const s of snap.players) {
     const p = newPlayer({ ...s, token: null, room, connected: s.isBot, ws: null });
     if (!p.isBot) p.graceTimer = setTimeout(() => leaveRoom(p), RECONNECT_GRACE_MS + RESUME_EXTRA_MS);
@@ -846,7 +929,7 @@ wss.on('connection', (ws) => {
       case 'create': {
         if (room) leaveRoom(player);
         player = newPlayer({ ws });
-        const r = { code: newCode(), players: [], hostId: player.id, state: 'lobby', rounds: 5, round: 0, game: null };
+        const r = { code: newCode(), players: [], hostId: player.id, state: 'lobby', rounds: 5, mapType: 'random', round: 0, game: null };
         rooms.set(r.code, r);
         joinRoom(r, msg.name);
         if (msg.solo) {
@@ -890,6 +973,7 @@ wss.on('connection', (ws) => {
       case 'settings': {
         if (!isHost(room) || (room.state !== 'lobby' && room.state !== 'over')) return;
         if (P.ROUND_OPTIONS.includes(Number(msg.rounds))) room.rounds = Number(msg.rounds);
+        if (msg.mapType === 'random' || P.MAP_TYPES[msg.mapType]) room.mapType = msg.mapType;
         broadcast(room, roomInfo(room));
         break;
       }

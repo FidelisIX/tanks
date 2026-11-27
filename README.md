@@ -18,7 +18,7 @@ Während des Spiels zeigt die Anzeigetafel über der Spielfläche für jeden Pan
 laufenden Runde, Gesamtpunkte, Geld und Treibstoff. Oben stehen, wer dran ist, die Runde, der Wind (Pfeil: Länge =
 Stärke, Richtung = Windrichtung) und die verbleibende Zugzeit.
 
-**Steuerung:** ←/→ Winkel · ↑/↓ Kraft (mit Shift in feineren Schritten) · 1–9 Waffe · S Schild · T Teleport · A/D fahren · Leertaste Feuer · H Hilfe.
+**Steuerung:** ←/→ Winkel · ↑/↓ Kraft (mit Shift in feineren Schritten) · 1–9, 0 Waffe · Q/E Waffe wechseln · S Schild · T Teleport · A/D fahren · Leertaste Feuer · H Hilfe.
 
 Alle Werte zu Waffen, Schild und Upgrades stehen in der **Hilfe im Spiel** (Knopf „?“, Taste H, Link im Menü und im Shop)
 und in [docs/WAFFEN.md](docs/WAFFEN.md).
@@ -34,6 +34,8 @@ Auf dem Handy über Schieberegler und Buttons.
 | Bohrer | gräbt sich nach dem Aufprall bis zu 150 px durch die Erde; Annäherungszünder: explodiert, sobald er näher als 28 px an einen Gegner kommt | nur im Shop |
 | Splitterbombe | zerfällt am höchsten Punkt der Flugbahn in 5 Splitter | nur im Shop |
 | Tunnelbohrer | Gegenstück zum Erdklumpen: gräbt sich bis zu 150 px durch die Erde und hinterlässt einen offenen Graben; kein Explosionsschaden, aber Fallschaden für Panzer, deren Boden wegfällt | 2 |
+| Motor-Ball | Ball mit Antrieb: rollt in Flugrichtung weiter, auch bergauf, bis 300 px; explodiert an Panzer, steiler Wand oder am Ende | nur im Shop (30) |
+| Hot Shower | Dreierfächer aus drei kleineren Atombomben (je 80 px Krater, bis 60 Schaden) | nur im Shop (220) |
 | Atombombe | riesiger Krater (Radius 115 px), bis zu 95 Schaden im ganzen Umkreis, kaum vom Wind abgetrieben | nur im Shop (280) |
 
 Die Munitionsangaben gelten für den Start eines Matches. Was übrig bleibt, nimmt man in die nächste Runde mit.
@@ -73,6 +75,18 @@ Nach jeder Runde öffnet sich der Shop für alle gleichzeitig, für 30 Sekunden 
   - Stoßdämpfer: −50 % Fallschaden pro Stufe, 42/63
   - Turbo-Kanone: +10 max. Kraft, 49/77
   - Kletterketten: steilere Hänge und weniger Verbrauch bergauf, 2 Stufen, 50/80
+  - Großtank: +100 Treibstoff pro Runde, dauerhaft, 2 Stufen, 40/70
+
+### Karten
+
+Der Gastgeber wählt im Warteraum den Kartentyp oder „Zufall“ (jede Runde ein anderer): **Hügel**, **Berge** (steile Gipfel),
+**Ebene** (wenig Deckung), **Canyon** (zwei Hochebenen mit einer tiefen Schlucht) oder **Inseln**. Auf den Inseln ist unterhalb der
+Wasserlinie Meer: Wer ins Wasser stürzt, bekommt sofort 25 Schaden, zu Beginn jedes eigenen Zugs im Wasser 10 weitere.
+
+### Aufholen
+
+Wer zu Rundenbeginn allein vorne liegt, trägt ein **Kopfgeld** (🎯 in der Anzeigetafel): Schaden an ihm bringt 50 % mehr Punkte,
+sein Abschuss 25 extra. Wer im Shop allein auf dem letzten Platz liegt, bekommt **25 % Rabatt** auf alles.
 
 ### Raum und Gastgeber
 
