@@ -40,7 +40,7 @@ Meldung des Besitzers (2026-11-27, Handy). Ursache nicht sicher nachweisbar (kei
 Client: Ohne Verbindung (Handy im Hintergrund, schwaches Netz, Deploy) verwarf der Browser die Schuss-Nachricht stillschweigend,
 FEUER! wurde trotzdem gesperrt und der Zug lief ab. Jetzt: ohne Verbindung wird nichts gesperrt und ein Hinweis erscheint; kommt
 nach 3 s keine Antwort vom Server, werden die Knöpfe wieder freigegeben („bitte nochmal drücken“). Gilt auch für Schild, Teleport
-und Reparatur. Getestet mit abgeschaltetem Netz in Chromium. Behoben in diesem Commit; offen, falls es weiter vorkommt.
+und Reparatur. Getestet mit abgeschaltetem Netz in Chromium. Behoben in `b369a02`; offen, falls es weiter vorkommt.
 
 ### B-018 – Computergegner traf sich mit Hot Shower selbst
 Beim Einbau der neuen Waffen gefunden (2026-11-27): Mit dem Hot Shower traf der Bot sich in 4 von 56 Entscheidungen selbst.
