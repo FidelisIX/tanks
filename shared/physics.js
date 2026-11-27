@@ -48,6 +48,9 @@
     islands: { name: 'Inseln', water: true },
   };
   const MAP_ORDER = ['hills', 'mountains', 'plains', 'canyon', 'islands'];
+  // time of day, rolled per round; only changes how the map looks
+  const SKIES = { day: { name: 'Tag' }, dawn: { name: 'Morgen' }, sunset: { name: 'Abend' }, night: { name: 'Nacht' } };
+  const SKY_ORDER = ['day', 'dawn', 'sunset', 'night'];
   const WATER_LEVEL = Math.round(H * 0.8);
   const WATER_SPLASH = 25;
   const WATER_TURN = 10;
@@ -168,11 +171,15 @@
 
     if (type === 'mountains') {
       // sharp ridges: inverted |sin| gives pointed peaks and round valleys
-      const ridges = waves(3, 190);
-      const detail = waves(3, 18);
+      // high, rugged ranges: big ridges with pointed tops plus small jagged detail
+      const ridges = waves(3, 290);
+      const detail = waves(5, 26);
       for (let x = 0; x < W; x++) {
-        const y = H * 0.92 - sum(ridges, x, (v) => Math.abs(Math.sin(v))) + sum(detail, x);
-        terrain[x] = clamp(y, H * 0.14, H - 30);
+        let y = H * 0.98 - sum(ridges, x, (v) => Math.abs(Math.sin(v)) ** 0.8) + sum(detail, x);
+        // soft ceiling: very high peaks are squeezed instead of cut off flat
+        const soft = H * 0.16;
+        if (y < soft) y = soft - (soft - y) / (1 + (soft - y) / 60);
+        terrain[x] = clamp(y, H * 0.04, H - 25);
       }
     } else if (type === 'plains') {
       const base = H * (0.72 + rng() * 0.06);
@@ -515,7 +522,7 @@
   return {
     W, H, GRAVITY, MAX_WIND, SHIELD_RADIUS, SHIELD_HP, TANK_RADIUS, BARREL, TURRET_Y, ANIM_SPEED, TURN_SECONDS,
     SHOP_SECONDS, ROUND_OPTIONS, DAMAGE_REACH, DAMAGE_FALLOFF, FALL_MIN, FALL_DIV, FALL_MAX, BASE_HP, BASE_MAX_POWER, MAX_PLAYERS, COLORS, WEAPONS, WEAPON_ORDER, SHOP_ITEMS, UPGRADES, REWARDS,
-    ARMOR_REDUCTION, WIND_DRIFT, DRILL_FUSE, TANK_FUEL, MAP_TYPES, MAP_ORDER, WATER_LEVEL, WATER_SPLASH, WATER_TURN,
+    ARMOR_REDUCTION, WIND_DRIFT, DRILL_FUSE, TANK_FUEL, MAP_TYPES, MAP_ORDER, SKIES, SKY_ORDER, WATER_LEVEL, WATER_SPLASH, WATER_TURN,
     BOUNTY_FACTOR, BOUNTY_KILL, LAST_PLACE_DISCOUNT, roundFuel, waterLevel, ROUND_FUEL, CLIMB, TELEPORT_MIN_DISTANCE, climbing, newInventory, maxHp, damageFactor, maxPower, shieldHp, fallFactor,
     generateTerrain, placeTanks, carve, addDirt, applyCrater, barrelTip, simulateShot, fireShells,
     explosionDamage, settleTanks,

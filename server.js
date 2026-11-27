@@ -242,7 +242,7 @@ function startRound(room) {
   });
   room.state = 'playing';
   room.game = {
-    terrain, tanks, map: { type, water }, turnIdx: crypto.randomInt(tanks.length) - 1, wind: randomWind(), turns: 0, phase: 'aim', timer: null,
+    terrain, tanks, map: { type, water, sky: P.SKY_ORDER[crypto.randomInt(P.SKY_ORDER.length)] }, turnIdx: crypto.randomInt(tanks.length) - 1, wind: randomWind(), turns: 0, phase: 'aim', timer: null,
   };
   room.lastMapType = type;
   broadcast(room, roomInfo(room));

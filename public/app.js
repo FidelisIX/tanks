@@ -432,8 +432,10 @@
     overlayVisible = false;
     $('overlay').classList.add('hidden');
     if (msg.map) currentMap = msg.map;
+    updateSnowLine(`${room ? room.code : ''}-${msg.round}`);
     const mapName = P.MAP_TYPES[currentMap.type] ? P.MAP_TYPES[currentMap.type].name : '';
-    $('round-label').textContent = `Runde ${msg.round}/${msg.rounds}${mapName ? ` · ${mapName}` : ''}`;
+    const skyName = P.SKIES[currentMap.sky] ? P.SKIES[currentMap.sky].name : '';
+    $('round-label').textContent = `Runde ${msg.round}/${msg.rounds}${mapName ? ` · ${mapName}` : ''}${skyName ? ` · ${skyName}` : ''}`;
     waterFloater(msg.turnDamage);
     show('game');
     updateControls();
@@ -759,18 +761,7 @@
       ctx.translate((Math.random() - 0.5) * 16 * k, (Math.random() - 0.5) * 16 * k);
     }
 
-    const sky = ctx.createLinearGradient(0, 0, 0, P.H);
-    sky.addColorStop(0, '#0d1530');
-    sky.addColorStop(0.6, '#3b3361');
-    sky.addColorStop(1, '#c46a4a');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, P.W, P.H);
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    for (const [x, y, r] of stars) ctx.fillRect(x, y, r, r);
-    ctx.fillStyle = '#f3e3b5';
-    ctx.beginPath();
-    ctx.arc(P.W - 140, 90, 34, 0, Math.PI * 2);
-    ctx.fill();
+    drawSky(now);
 
     if (terrain) drawTerrain();
     for (const t of tanks) drawTank(t, now);
@@ -804,24 +795,176 @@
     requestAnimationFrame(draw);
   }
 
-  function drawTerrain() {
+  // ---------- looks: time of day and map palettes ----------
+  const SKY_LOOKS = {
+    day: { stops: ['#4f9fe0', '#94cdf2', '#dcf1ff'], body: { x: P.W - 170, y: 95, r: 38, color: '#fff3b0', glow: 'rgba(255,240,170,0.35)' }, stars: 0, clouds: 'rgba(255,255,255,0.9)', shade: null },
+    dawn: { stops: ['#34477a', '#d99bb4', '#ffd7a3'], body: { x: 190, y: 250, r: 44, color: '#ffd59a', glow: 'rgba(255,200,150,0.4)' }, stars: 0.25, clouds: 'rgba(255,220,225,0.75)', shade: 'rgba(255,170,150,0.08)' },
+    sunset: { stops: ['#2a1c4a', '#a3456c', '#f6a05a'], body: { x: P.W - 210, y: 300, r: 50, color: '#ffb067', glow: 'rgba(255,140,80,0.45)' }, stars: 0.35, clouds: 'rgba(255,170,140,0.7)', shade: 'rgba(255,110,60,0.10)' },
+    night: { stops: ['#070b1c', '#18214a', '#3a3462'], body: { x: P.W - 140, y: 90, r: 34, color: '#f3e3b5', glow: 'rgba(240,230,190,0.18)' }, stars: 1, clouds: null, shade: 'rgba(5,10,40,0.32)' },
+  };
+  const PALETTES = {
+    hills: { stops: ['#4f7a3a', '#5d4a2f', '#2e2418'], edge: '#8fc46a' },
+    mountains: { stops: ['#8d909a', '#5a5c65', '#2e2f35'], edge: '#c3c7cf', snow: true },
+    plains: { stops: ['#e4c07e', '#c69552', '#7a5a2e'], edge: '#f4dca4' },
+    canyon: { stops: ['#c2643c', '#8e3e22', '#4a1f12'], edge: '#e58c5e', strata: true },
+    islands: { stops: ['#4f8f3a', '#6b5434', '#2e2418'], edge: '#8fd46a', beach: true },
+  };
+  const clouds = Array.from({ length: 6 }, (_, i) => ({ x: (i * 230 + Math.random() * 120) % P.W, y: 40 + Math.random() * 120, s: 0.7 + Math.random() * 0.7 }));
+
+  function drawSky(now) {
+    const look = SKY_LOOKS[currentMap.sky] || SKY_LOOKS.night;
+    const g = ctx.createLinearGradient(0, 0, 0, P.H);
+    look.stops.forEach((c, i) => g.addColorStop(i / (look.stops.length - 1), c));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, P.W, P.H);
+    if (look.stars) {
+      ctx.fillStyle = `rgba(255,255,255,${0.7 * look.stars})`;
+      for (const [x, y, r] of stars) ctx.fillRect(x, y, r, r);
+    }
+    const b = look.body;
+    const glow = ctx.createRadialGradient(b.x, b.y, b.r * 0.6, b.x, b.y, b.r * 3);
+    glow.addColorStop(0, b.glow);
+    glow.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(b.x - b.r * 3, b.y - b.r * 3, b.r * 6, b.r * 6);
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
+    if (look.clouds) {
+      ctx.fillStyle = look.clouds;
+      for (const c of clouds) {
+        const x = ((c.x + now * 0.004 * (wind || 1)) % (P.W + 200) + P.W + 200) % (P.W + 200) - 100; // drift with the wind
+        for (const [dx, dy, r] of [[0, 0, 22], [24, -10, 26], [50, 0, 20], [24, 6, 22]]) {
+          ctx.beginPath();
+          ctx.arc(x + dx * c.s, c.y + dy * c.s, r * c.s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  // The snow line follows the map: between the highest peak and the median ground height,
+  // so the top of every mountain map is snowy. Fixed for a round (craters do not move it).
+  let snowLine = P.H * 0.36;
+  let snowRound = null;
+  function updateSnowLine(round) {
+    if (!terrain || snowRound === round) return;
+    snowRound = round;
+    const sorted = [...terrain].sort((a, b) => a - b);
+    const top = sorted[0];
+    const median = sorted[sorted.length >> 1];
+    snowLine = top + Math.max(50, (median - top) * 0.6);
+  }
+
+  function terrainPath() {
     ctx.beginPath();
     ctx.moveTo(0, P.H);
     for (let x = 0; x < P.W; x++) ctx.lineTo(x, terrain[x]);
     ctx.lineTo(P.W, P.H);
     ctx.closePath();
+  }
+
+  function drawTerrain() {
+    const pal = PALETTES[currentMap.type] || PALETTES.hills;
+    terrainPath();
     const g = ctx.createLinearGradient(0, P.H * 0.3, 0, P.H);
-    g.addColorStop(0, '#4f7a3a');
-    g.addColorStop(0.25, '#5d4a2f');
-    g.addColorStop(1, '#2e2418');
+    g.addColorStop(0, pal.stops[0]);
+    g.addColorStop(0.25, pal.stops[1]);
+    g.addColorStop(1, pal.stops[2]);
     ctx.fillStyle = g;
     ctx.fill();
+
+    // details are painted inside the terrain shape only
+    ctx.save();
+    terrainPath();
+    ctx.clip();
+    if (pal.strata) {
+      // rock layers of the canyon
+      for (let y = 140; y < P.H; y += 22) {
+        ctx.fillStyle = y % 44 === 0 ? 'rgba(60,20,10,0.18)' : 'rgba(255,190,150,0.08)';
+        ctx.beginPath();
+        for (let x = 0; x <= P.W; x += 20) ctx.lineTo(x, y + Math.sin(x / 90 + y) * 3);
+        for (let x = P.W; x >= 0; x -= 20) ctx.lineTo(x, y + 9 + Math.sin(x / 90 + y) * 3);
+        ctx.fill();
+      }
+    }
+    if (pal.snow) {
+      // snow caps above a slightly wavy snow line
+      const snowY = (x) => snowLine + Math.sin(x / 37) * 10 + Math.sin(x / 13) * 4;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      for (let x = 0; x <= P.W; x += 6) ctx.lineTo(x, snowY(x));
+      ctx.lineTo(P.W, 0);
+      ctx.closePath();
+      const sg = ctx.createLinearGradient(0, 0, 0, P.H * 0.4);
+      sg.addColorStop(0, '#ffffff');
+      sg.addColorStop(1, '#d6e2ef');
+      ctx.fillStyle = sg;
+      ctx.fill();
+      // texture: rock furrows, snow fields running down the gullies, and grain in the snow
+      const rnd = (n) => (Math.sin(n * 12.9898) * 43758.5453) % 1;
+      ctx.strokeStyle = 'rgba(30,32,38,0.35)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 70; i++) {
+        const x = Math.abs(rnd(i + 1)) * P.W;
+        const y = terrain[Math.floor(x)] + 25 + Math.abs(rnd(i + 7)) * 160;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + 14 + Math.abs(rnd(i + 3)) * 18, y + 22 + Math.abs(rnd(i + 5)) * 26);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(240,246,252,0.85)';
+      for (let i = 0; i < 40; i++) {
+        const x = Math.abs(rnd(i + 101)) * P.W;
+        const y0 = snowY(x) - 4;
+        if (terrain[Math.floor(x)] > y0) continue; // only below a snowy peak
+        const len = 25 + Math.abs(rnd(i + 103)) * 55;
+        ctx.beginPath();
+        ctx.moveTo(x - 6, y0);
+        ctx.lineTo(x + 6, y0);
+        ctx.lineTo(x + 1, y0 + len);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(170,190,215,0.55)';
+      for (let i = 0; i < 260; i++) {
+        const x = Math.abs(rnd(i + 301)) * P.W;
+        const y = Math.abs(rnd(i + 307)) * snowY(x);
+        if (y > terrain[Math.floor(x)]) ctx.fillRect(x, y, 2, 2);
+      }
+    }
+    if (pal.beach && currentMap.water !== null && currentMap.water !== undefined) {
+      ctx.fillStyle = '#e3cb8c';
+      ctx.fillRect(0, currentMap.water - 26, P.W, 30);
+    }
+    const look = SKY_LOOKS[currentMap.sky] || SKY_LOOKS.night;
+    if (look.shade) {
+      ctx.fillStyle = look.shade; // the light of the time of day tints the ground
+      ctx.fillRect(0, 0, P.W, P.H);
+    }
+    ctx.restore();
+
     ctx.beginPath();
     for (let x = 0; x < P.W; x++) ctx.lineTo(x, terrain[x]);
-    ctx.strokeStyle = '#8fc46a';
+    ctx.strokeStyle = pal.edge;
     ctx.lineWidth = 3;
     ctx.stroke();
+    if (pal.snow) {
+      // white edge where the ground is snowy
+      ctx.strokeStyle = '#ffffff';
+      ctx.beginPath();
+      let on = false;
+      for (let x = 0; x < P.W; x++) {
+        const snowy = terrain[x] < snowLine + Math.sin(x / 37) * 10 + Math.sin(x / 13) * 4;
+        if (snowy && !on) ctx.moveTo(x, terrain[x]);
+        else if (snowy) ctx.lineTo(x, terrain[x]);
+        on = snowy;
+      }
+      ctx.stroke();
+    }
   }
+
 
   function drawTank(t, now) {
     if (!t.alive) {

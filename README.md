@@ -82,6 +82,9 @@ Nach jeder Runde öffnet sich der Shop für alle gleichzeitig, für 30 Sekunden 
 Der Gastgeber wählt im Warteraum den Kartentyp oder „Zufall“ (jede Runde ein anderer): **Hügel**, **Berge** (steile Gipfel),
 **Ebene** (wenig Deckung), **Canyon** (zwei Hochebenen mit einer tiefen Schlucht) oder **Inseln**. Auf den Inseln ist unterhalb der
 Wasserlinie Meer: Wer ins Wasser stürzt, bekommt sofort 25 Schaden, zu Beginn jedes eigenen Zugs im Wasser 10 weitere.
+Jede Runde bekommt außerdem eine zufällige **Tageszeit** (Tag, Morgen, Abend, Nacht), die nur das Aussehen ändert. Jeder Kartentyp
+hat sein eigenes Aussehen: Gras (Hügel), Fels mit Schneekappen (Berge), Wüstensand (Ebene), roter Fels mit Gesteinsschichten (Canyon),
+grüne Inseln mit Sandstrand (Inseln).
 
 ### Aufholen
 
