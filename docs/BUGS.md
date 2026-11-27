@@ -30,8 +30,8 @@ Bots prüfen.
 Meldung des Besitzers (2026-11-27). Live nicht nachgestellt: Auf Laptop (1366 × 768) und Handy (Pixel 7) öffnet der Link
 https://krater-kommando.onrender.com/statistik.html ohne Fehler (zeigt 1 Match). Auffällig: Der Link war ein kleiner grauer
 Text und leicht zu übersehen; im Warteraum gab es ihn gar nicht. Jetzt Knöpfe „📊 Statistik & Rekorde“ und „❓ Waffen & Upgrades“
-im Hauptmenü und im Warteraum. Offen, bis der Besitzer sagt, was genau nicht ging (Link nicht gefunden / Klick ohne Wirkung /
-Fehlerseite / im Raum).
+im Hauptmenü und im Warteraum. Ursache laut Screenshot des Besitzers (Handy, Chrome): Er war im **Warteraum**, und dort gab es
+keinen Weg zur Statistik. Behoben in `0b3ce8c` (Knopf im Warteraum, öffnet in neuem Tab); online, sobald auf `main`.
 
 ## So gewollt
 
