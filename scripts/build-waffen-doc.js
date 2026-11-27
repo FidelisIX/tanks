@@ -66,6 +66,7 @@ ${weaponText}
 |---|---|---|---|
 | Schild (Taste S) | Energieblase mit ${P.SHIELD_HP} Punkten. Gegnerische Geschosse explodieren schon an der Blase; der Schild fängt den Schaden ab, bis seine Punkte aufgebraucht sind. Das eigene Geschoss fliegt durch den eigenen Schild. Aktivieren kostet den Zug. Kein Schutz vor Fallschaden. | ${inv.shields} | ${S.shield.price} |
 | Teleport (Taste T) | Im eigenen Zug eine Stelle auf der Karte anklicken; der Panzer springt dorthin. Nicht näher als ${P.TELEPORT_MIN_DISTANCE} px an einen anderen Panzer. Kostet den Zug. | 0 | ${S.teleport.price} |
+| Reparaturset (Taste R) | Repariert ${P.REPAIR_HP} Lebenspunkte (höchstens bis ${P.BASE_HP}). Kostet den Zug. | 0 | ${S.repair.price} |
 | Treibstoff (A/D, ◀ ▶) | Zu Beginn jeder Runde ${P.ROUND_FUEL}, der Rest verfällt am Rundenende. Fahren kostet 1 pro Pixel, bergauf zusätzlich ${num(P.CLIMB[0].uphillCost)} pro Pixel Höhe. Ohne Kletterketten schafft der Panzer Steigungen bis ${num(P.CLIMB[0].maxSlope)} : 1; von Klippen fährt er nicht hinunter. | ${P.ROUND_FUEL} pro Runde | +${S.fuel.qty} für ${S.fuel.price} (gilt für die nächste Runde) |
 
 ## Upgrades

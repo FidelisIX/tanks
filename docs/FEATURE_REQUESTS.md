@@ -62,3 +62,6 @@ Vorschlag: die bisherigen Wegwerf-Tests (WebSocket-Bots, Playwright) als `npm te
 | F-042 | Berge deutlich bergiger (höchster Gipfel im Median y 259 → 113, Höhenunterschied 274 → 395 px) mit Schneekappen und Schnee-/Felstextur; Schneegrenze passt sich jeder Karte an; weiche Obergrenze statt abgeschnittener Gipfel (46 → 0 von 200 Karten) | `046b5ff` |
 | F-043 | Tasten fürs Handy zum Verstellen von Winkel (↶ ↷) und Kraft (− +): Tippen = 1 Schritt, Halten wiederholt immer schneller; Fahr-Tasten beschriftet, damit man sie nicht mit den Winkel-Tasten verwechselt | `a26d0e3` |
 | F-044 | Computergegner nutzen die neuen Waffen: Motor-Ball (82–100 % Treffer), Hot Shower (97 %, Ø 67 Schaden), Tunnelbohrer nur wenn ein Graben den Gegner abstürzen lässt; Einkaufslisten ergänzt | `02cc633` |
+| F-045 | Deutlicher, in welcher Runde man ist: großes „Runde 2 von 5“ (mit Karte, Tageszeit, „Letzte Runde!“) zu Rundenbeginn, Runde oben als orange Markierung | dieser Commit |
+| F-046 | Erdklumpen mehr Erde: Radius 45 → 55 px (~50 % mehr) | dieser Commit |
+| F-047 | Neues Reparaturset: +35 Lebenspunkte (höchstens 100), kostet den Zug, Taste R, Shop 35; Computergegner (Mittel/Schwer) kaufen und nutzen es | dieser Commit |

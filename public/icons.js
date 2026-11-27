@@ -80,6 +80,10 @@ const ICONS = (() => {
     shock: svg(`<rect x="11" y="2" width="10" height="5" rx="1.5" fill="#64748b"/>
       <path d="M16 7l6 2.5-12 3 12 3-12 3 12 3-6 2.5" stroke="#f2c230" stroke-width="2.2" fill="none" stroke-linejoin="round"/>
       <rect x="11" y="25" width="10" height="5" rx="1.5" fill="#64748b"/>`),
+    // wrench over a green cross
+    repair: svg(`<rect x="11" y="4" width="10" height="24" rx="2" fill="#16a34a"/><rect x="4" y="11" width="24" height="10" rx="2" fill="#16a34a"/>
+      <g transform="rotate(-45 16 16)"><rect x="14.5" y="9" width="3" height="16" rx="1.5" fill="#e5e7eb" stroke="#475569" stroke-width=".8"/>
+      <path d="M12 9a4 4 0 1 1 8 0l-2 1.5h-4z" fill="#e5e7eb" stroke="#475569" stroke-width=".8"/></g>`),
     // big jerrycan with a plus
     tank: svg(`<path d="M6 7h15l5 5v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" fill="#dc2626" stroke="#7f1d1d" stroke-width="1.3"/>
       <rect x="7" y="3" width="8" height="4" rx="1" fill="#7f1d1d"/>

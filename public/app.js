@@ -148,7 +148,42 @@
   }, 7000);
 
   function send(msg) {
-    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+    ws.send(JSON.stringify(msg));
+    return true;
+  }
+
+  // Turn-ending actions (fire, shield, teleport, repair). Without a connection nothing is sent and
+  // the controls stay usable; if the server does not answer within 3 s they are released again,
+  // so a lost message never leaves the player stuck until the turn runs out. (The server ignores
+  // a second action in the same turn, so pressing again is safe.)
+  let ackTimer = null;
+  function sendAction(msg) {
+    if (!send(msg)) {
+      notice('Keine Verbindung – nicht gesendet. Gleich nochmal versuchen.');
+      return false;
+    }
+    phase = 'wait';
+    updateControls();
+    clearTimeout(ackTimer);
+    ackTimer = setTimeout(() => {
+      if (phase !== 'wait') return;
+      phase = 'aim';
+      updateControls();
+      notice('Keine Antwort vom Server – bitte nochmal drücken.');
+    }, 3000);
+    return true;
+  }
+  function acknowledged() {
+    clearTimeout(ackTimer);
+  }
+  let noticeTimer = null;
+  function notice(text) {
+    banner(text);
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => {
+      if ($('conn-banner').textContent === text) banner('');
+    }, 4000);
   }
 
   function handle(msg) {
@@ -223,7 +258,19 @@
         waterFloater(msg.turnDamage);
         renderScoreboard();
         break;
+      case 'repair': {
+        acknowledged();
+        tanks = msg.tanks;
+        phase = 'anim';
+        const t = tankById(msg.id);
+        if (t) floaters.push({ x: t.x, y: t.y - 50, text: `+${msg.heal} ❤`, age: 0, color: '#6fd36f' });
+        sound('shield');
+        updateControls();
+        renderScoreboard();
+        break;
+      }
       case 'teleport': {
+        acknowledged();
         tanks = msg.tanks;
         phase = 'anim';
         for (const pt of [msg.from, msg.to]) effects.push({ teleport: true, x: pt.x, y: pt.y - 8, age: 0 });
@@ -235,6 +282,7 @@
         break;
       }
       case 'shield': {
+        acknowledged();
         tanks = msg.tanks;
         phase = 'anim';
         const t = tankById(msg.id);
@@ -247,6 +295,7 @@
         break;
       }
       case 'roundOver':
+        acknowledged();
         lastRound = msg;
         phase = 'idle';
         updateControls();
@@ -422,6 +471,7 @@
   }
 
   function applyTurn(msg) {
+    acknowledged();
     stopTargeting();
     terrain = msg.terrain;
     tanks = msg.tanks;
@@ -435,7 +485,17 @@
     updateSnowLine(`${room ? room.code : ''}-${msg.round}`);
     const mapName = P.MAP_TYPES[currentMap.type] ? P.MAP_TYPES[currentMap.type].name : '';
     const skyName = P.SKIES[currentMap.sky] ? P.SKIES[currentMap.sky].name : '';
-    $('round-label').textContent = `Runde ${msg.round}/${msg.rounds}${mapName ? ` · ${mapName}` : ''}${skyName ? ` · ${skyName}` : ''}`;
+    $('round-label').innerHTML = `<span class="round-pill">Runde ${msg.round}/${msg.rounds}</span> ${[mapName, skyName].filter(Boolean).join(' · ')}`;
+    const roundKey = `${room ? room.code : ''}-${msg.round}`;
+    if (roundKey !== introKey) {
+      introKey = roundKey;
+      intro = {
+        title: `Runde ${msg.round} von ${msg.rounds}`,
+        sub: [mapName, skyName].filter(Boolean).join(' · '),
+        last: msg.round === msg.rounds,
+        start: performance.now(),
+      };
+    }
     waterFloater(msg.turnDamage);
     show('game');
     updateControls();
@@ -479,6 +539,9 @@
       }</small></button>
       <button id="btn-teleport" class="weapon${targeting ? ' active' : ''}" ${!mine || !t || !(t.teleports > 0) ? 'disabled' : ''} title="Teleport (Taste T) – Ziel auf der Karte anklicken, kostet den Zug"><span class="key">T</span>${ICONS.teleport}<small>×${
         t ? t.teleports || 0 : 0
+      }</small></button>
+      <button id="btn-repair" class="weapon" ${!mine || !t || !(t.repairs > 0) || t.hp >= t.maxHp ? 'disabled' : ''} title="Reparaturset (Taste R) – +${P.REPAIR_HP} Lebenspunkte, kostet den Zug"><span class="key">R</span>${ICONS.repair}<small>×${
+        t ? t.repairs || 0 : 0
       }</small></button></div>`;
     const cur = tankById(currentId);
     $('turn-label').innerHTML = cur
@@ -572,9 +635,7 @@
     const t = myTank();
     clearTimeout(aimTimer);
     // the aim travels with the shot, so a dropped aim update can never change the shot
-    send({ type: 'fire', angle: t.angle, power: t.power, weapon: t.weapon });
-    phase = 'wait';
-    updateControls();
+    sendAction({ type: 'fire', angle: t.angle, power: t.power, weapon: t.weapon });
   }
 
   // number keys 1–9 and 0 select the first ten weapons; Q/E cycle through all available ones
@@ -642,15 +703,20 @@
     return Math.round(((e.clientX - r.left) / r.width) * P.W);
   }
 
+  function repairTank() {
+    const t = myTank();
+    if (!isMyTurn() || !(t.repairs > 0) || t.hp >= t.maxHp) return;
+    sendAction({ type: 'repair' });
+  }
+
   function raiseShield() {
     if (!isMyTurn() || myTank().shieldLeft <= 0) return;
-    send({ type: 'shield' });
-    phase = 'wait';
-    updateControls();
+    sendAction({ type: 'shield' });
   }
 
   // ---------- shot animation ----------
   function startAnim(msg) {
+    acknowledged();
     phase = 'anim';
     const shooter = tankById(msg.shooterId);
     if (shooter) Object.assign(shooter, { angle: msg.angle, power: msg.power, weapon: msg.weapon });
@@ -770,6 +836,7 @@
     drawEffects();
     drawFloaters();
     drawWindSock();
+    if (intro) drawIntro(now);
     if (targeting) {
       // hint on the canvas itself, so the page layout does not jump
       ctx.font = '700 18px system-ui, sans-serif';
@@ -1183,6 +1250,31 @@
     ctx.globalAlpha = 1;
   }
 
+  // big round banner at the start of every round, fades out after ~2.5 s
+  let intro = null;
+  let introKey = null;
+  function drawIntro(now) {
+    const t = (now - intro.start) / 1000;
+    if (t > 2.8) return (intro = null);
+    const alpha = t < 0.2 ? t / 0.2 : t > 2.2 ? 1 - (t - 2.2) / 0.6 : 1;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = 'rgba(10,12,18,0.7)';
+    ctx.fillRect(P.W / 2 - 300, P.H / 2 - 95, 600, intro.last ? 190 : 160);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#f08a24';
+    ctx.font = '800 64px system-ui, sans-serif';
+    ctx.fillText(intro.title, P.W / 2, P.H / 2 - 15);
+    ctx.fillStyle = '#e9edf3';
+    ctx.font = '600 24px system-ui, sans-serif';
+    ctx.fillText(intro.sub, P.W / 2, P.H / 2 + 30);
+    if (intro.last) {
+      ctx.fillStyle = '#f2c230';
+      ctx.fillText('Letzte Runde!', P.W / 2, P.H / 2 + 70);
+    }
+    ctx.restore();
+  }
+
   function drawTeleportMarker(x) {
     const ok = teleportTargetOk(x) && terrain;
     const y = terrain ? terrain[Math.max(0, Math.min(P.W - 1, x))] : P.H;
@@ -1359,6 +1451,7 @@
   $('weapons').onclick = (e) => {
     if (e.target.closest('#btn-shield')) return raiseShield();
     if (e.target.closest('#btn-teleport')) return startTargeting();
+    if (e.target.closest('#btn-repair')) return repairTank();
     const b = e.target.closest('button[data-w]');
     if (b) setAim({ weapon: b.dataset.w });
   };
@@ -1394,6 +1487,8 @@
       case 'S': raiseShield(); break;
       case 't':
       case 'T': startTargeting(); break;
+      case 'r':
+      case 'R': repairTank(); break;
       case 'a':
       case 'A': drive(-1); break;
       case 'd':
@@ -1418,9 +1513,7 @@
     const x = canvasX(e);
     if (!teleportTargetOk(x)) return;
     stopTargeting();
-    send({ type: 'teleport', x });
-    phase = 'wait';
-    updateControls();
+    sendAction({ type: 'teleport', x });
   });
 
   requestAnimationFrame(draw);

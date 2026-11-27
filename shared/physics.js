@@ -37,7 +37,8 @@
     { maxSlope: 12, uphillCost: 0 },
   ];
   const TELEPORT_MIN_DISTANCE = 40; // px to the nearest other tank
-  const TANK_FUEL = 100; // extra fuel per round per level of the "Großtank" upgrade
+  const TANK_FUEL = 100;
+  const REPAIR_HP = 35; // hit points restored by one repair kit // extra fuel per round per level of the "Großtank" upgrade
   // Map types. On "islands" everything below WATER_LEVEL is sea: falling in costs WATER_SPLASH
   // at once and WATER_TURN at the start of every own turn spent in the water.
   const MAP_TYPES = {
@@ -76,7 +77,7 @@
     shell: { name: 'Granate', radius: 28, damage: 35, ammo: -1, drag: 1, desc: 'Standardgeschoss, unbegrenzt. Explodiert beim ersten Kontakt mit Boden, Panzer oder Schild.' },
     heavy: { name: 'Schwere Bombe', radius: 55, damage: 55, ammo: 2, drag: 0.6, desc: 'Großer Krater und viel Schaden. Schwer, deshalb wenig vom Wind abgetrieben.' },
     triple: { name: 'Dreierfächer', radius: 22, damage: 24, ammo: 3, drag: 1.3, spread: [-5, 0, 5], desc: 'Drei leichte Geschosse im Fächer (−5°, 0°, +5°). Gut gegen weit verteilte oder schwer zu treffende Ziele; stark windanfällig.' },
-    dirt: { name: 'Erdklumpen', radius: 45, damage: 0, ammo: 2, drag: 1.5, dirt: true, desc: 'Macht keinen Schaden, sondern baut einen Erdhügel auf: Deckung vor dir oder einen Gegner eingraben.' },
+    dirt: { name: 'Erdklumpen', radius: 55, damage: 0, ammo: 2, drag: 1.5, dirt: true, desc: 'Macht keinen Schaden, sondern baut einen Erdhügel auf: Deckung vor dir oder einen Gegner eingraben.' },
     ball: { name: 'Ball', radius: 30, damage: 40, ammo: 3, drag: 1.1, roll: true, desc: 'Rollt nach dem Aufprall den Hang hinunter, prallt an steilen Wänden ab und fliegt über Klippen. Explodiert, wenn er liegen bleibt oder einen Panzer berührt – ideal für Gegner in Mulden.' },
     drill: { name: 'Bohrer', radius: 32, damage: 45, ammo: 0, drag: 0.8, drill: 150, desc: 'Gräbt sich nach dem Aufprall bis zu 150 px weiter durch die Erde. Mit Annäherungszünder: explodiert, sobald er beim Graben näher als 28 px an einen gegnerischen Panzer kommt, sonst am Ende der Strecke – trifft Gegner hinter Hügeln oder unter Erdhaufen.' },
     cluster: { name: 'Splitterbombe', radius: 20, damage: 20, ammo: 0, drag: 1, cluster: { count: 5, spread: 1.1 }, desc: 'Zerfällt am höchsten Punkt der Flugbahn in 5 Splitter (je 18 Schaden, Krater 18 px), die sich auffächern.' },
@@ -102,6 +103,7 @@
     trench: { name: 'Tunnelbohrer', price: 18, qty: 1, desc: 'gräbt einen Graben durch die Erde, ohne Explosionsschaden' },
     motorball: { name: 'Motor-Ball', price: 30, qty: 1, desc: 'rollt mit Antrieb weiter, auch bergauf' },
     hotshower: { name: 'Hot Shower', price: 220, qty: 1, desc: 'drei kleinere Atombomben im Fächer' },
+    repair: { name: 'Reparaturset', price: 35, qty: 1, desc: '+35 Lebenspunkte, kostet den Zug' },
     teleport: { name: 'Teleport', price: 50, qty: 1, desc: 'im eigenen Zug an eine angeklickte Stelle springen, kostet den Zug' },
     fuel: { name: 'Treibstoff', price: 14, qty: 100, desc: 'für die nächste Runde, zusätzlich zu den 300 pro Runde' },
   };
@@ -118,7 +120,7 @@
   function newInventory() {
     const ammo = {};
     for (const k of WEAPON_ORDER) ammo[k] = WEAPONS[k].ammo;
-    return { ammo, shields: 1, teleports: 0, fuel: ROUND_FUEL, upgrades: { armor: 0, shieldBoost: 0, shock: 0, cannon: 0, climber: 0, tank: 0 } };
+    return { ammo, shields: 1, teleports: 0, repairs: 0, fuel: ROUND_FUEL, upgrades: { armor: 0, shieldBoost: 0, shock: 0, cannon: 0, climber: 0, tank: 0 } };
   }
 
   // Armor reduces the explosion damage a tank takes instead of adding hit points, so an
@@ -522,7 +524,7 @@
   return {
     W, H, GRAVITY, MAX_WIND, SHIELD_RADIUS, SHIELD_HP, TANK_RADIUS, BARREL, TURRET_Y, ANIM_SPEED, TURN_SECONDS,
     SHOP_SECONDS, ROUND_OPTIONS, DAMAGE_REACH, DAMAGE_FALLOFF, FALL_MIN, FALL_DIV, FALL_MAX, BASE_HP, BASE_MAX_POWER, MAX_PLAYERS, COLORS, WEAPONS, WEAPON_ORDER, SHOP_ITEMS, UPGRADES, REWARDS,
-    ARMOR_REDUCTION, WIND_DRIFT, DRILL_FUSE, TANK_FUEL, MAP_TYPES, MAP_ORDER, SKIES, SKY_ORDER, WATER_LEVEL, WATER_SPLASH, WATER_TURN,
+    ARMOR_REDUCTION, WIND_DRIFT, DRILL_FUSE, TANK_FUEL, REPAIR_HP, MAP_TYPES, MAP_ORDER, SKIES, SKY_ORDER, WATER_LEVEL, WATER_SPLASH, WATER_TURN,
     BOUNTY_FACTOR, BOUNTY_KILL, LAST_PLACE_DISCOUNT, roundFuel, waterLevel, ROUND_FUEL, CLIMB, TELEPORT_MIN_DISTANCE, climbing, newInventory, maxHp, damageFactor, maxPower, shieldHp, fallFactor,
     generateTerrain, placeTanks, carve, addDirt, applyCrater, barrelTip, simulateShot, fireShells,
     explosionDamage, settleTanks,

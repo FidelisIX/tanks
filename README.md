@@ -18,7 +18,7 @@ Während des Spiels zeigt die Anzeigetafel über der Spielfläche für jeden Pan
 laufenden Runde, Gesamtpunkte, Geld und Treibstoff. Oben stehen, wer dran ist, die Runde, der Wind (Pfeil: Länge =
 Stärke, Richtung = Windrichtung) und die verbleibende Zugzeit.
 
-**Steuerung:** ←/→ Winkel · ↑/↓ Kraft (mit Shift in feineren Schritten) · 1–9, 0 Waffe · Q/E Waffe wechseln · S Schild · T Teleport · A/D fahren · Leertaste Feuer · H Hilfe.
+**Steuerung:** ←/→ Winkel · ↑/↓ Kraft (mit Shift in feineren Schritten) · 1–9, 0 Waffe · Q/E Waffe wechseln · S Schild · T Teleport · R Reparieren · A/D fahren · Leertaste Feuer · H Hilfe.
 
 Alle Werte zu Waffen, Schild und Upgrades stehen in der **Hilfe im Spiel** (Knopf „?“, Taste H, Link im Menü und im Shop)
 und in [docs/WAFFEN.md](docs/WAFFEN.md).
@@ -48,6 +48,8 @@ Die Munitionsangaben gelten für den Start eines Matches. Was übrig bleibt, nim
 
 **Fahren:** Im eigenen Zug mit A/D oder ◀ ▶. Zu Beginn jeder Runde gibt es 300 Treibstoff; Fahren kostet 1 pro Pixel, bergauf etwas mehr.
 Zu steile Hänge und Klippen sind nicht befahrbar; die Kletterketten (Upgrade) schaffen steilere Hänge.
+
+**Reparaturset** (Taste R, im Shop für 35): repariert 35 Lebenspunkte, kostet den Zug.
 
 **Teleport** (Taste T, im Shop): im eigenen Zug eine Stelle auf der Karte anklicken und dorthin springen. Kostet den Zug.
 

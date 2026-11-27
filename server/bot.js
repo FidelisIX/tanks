@@ -81,6 +81,10 @@ function findAim(game, tank, weapon, target) {
 // What the bot does on its turn: { shield: true } or { weapon, angle, power }.
 function decide(game, tank, level = 'medium') {
   const cfg = DIFFICULTIES[level] || DIFFICULTIES.medium;
+  // badly damaged: repair first (repair kits are bought by medium and hard bots)
+  if (tank.inv.repairs > 0 && level !== 'easy' && tank.hp <= tank.maxHp - P.REPAIR_HP && tank.hp < tank.maxHp * 0.45) {
+    return { repair: true };
+  }
   if (tank.inv.shields > 0 && tank.shield <= 0 && tank.hp < tank.maxHp * cfg.shieldAt && Math.random() < 0.6) {
     return { shield: true };
   }
@@ -119,8 +123,8 @@ function harmsSelf(game, tank, { weapon, angle, power }) {
 // Shopping list per difficulty, bought in this order as long as the money lasts.
 const SHOPPING = {
   easy: [['item', 'ball'], ['item', 'heavy'], ['item', 'motorball'], ['upgrade', 'armor']],
-  medium: [['upgrade', 'armor'], ['item', 'heavy'], ['item', 'shield'], ['item', 'motorball'], ['item', 'cluster'], ['upgrade', 'shock']],
-  hard: [['item', 'hotshower'], ['item', 'nuke'], ['upgrade', 'armor'], ['upgrade', 'shieldBoost'], ['item', 'shield'], ['item', 'heavy'], ['item', 'motorball'], ['upgrade', 'cannon'], ['item', 'cluster']],
+  medium: [['upgrade', 'armor'], ['item', 'repair'], ['item', 'heavy'], ['item', 'shield'], ['item', 'motorball'], ['item', 'cluster'], ['upgrade', 'shock']],
+  hard: [['item', 'hotshower'], ['item', 'repair'], ['item', 'nuke'], ['upgrade', 'armor'], ['upgrade', 'shieldBoost'], ['item', 'shield'], ['item', 'heavy'], ['item', 'motorball'], ['upgrade', 'cannon'], ['item', 'cluster']],
 };
 
 function shoppingList(level) {

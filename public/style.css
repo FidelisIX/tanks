@@ -148,6 +148,7 @@ canvas.targeting { cursor: crosshair; }
 .turn-pill.mine { animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--c) 25%, transparent); } }
 #round-label { color: var(--muted); }
+.round-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; background: #f08a24; color: #1a1205; font-weight: 800; font-size: 16px; margin-right: 6px; }
 #wind-label { display: flex; align-items: center; gap: 8px; }
 .wind-title { color: var(--muted); font-weight: 500; }
 .wind-gauge { position: relative; width: 120px; height: 12px; background: #0f1218; border: 1px solid var(--line); border-radius: 6px; }

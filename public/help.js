@@ -65,6 +65,9 @@ const Help = (() => {
           <td>Im eigenen Zug eine Stelle auf der Karte anklicken; der Panzer springt dorthin. Nicht näher als
           ${P.TELEPORT_MIN_DISTANCE} px an einen anderen Panzer. Kostet den Zug.</td>
           <td>nur Shop</td><td>${P.SHOP_ITEMS.teleport.price}</td></tr>
+        <tr><td class="h-name">${ICONS.repair}<span><b>Reparaturset</b><small>Taste R</small></span></td>
+          <td>Repariert ${P.REPAIR_HP} Lebenspunkte (höchstens bis ${P.BASE_HP}). Kostet den Zug.</td>
+          <td>nur Shop</td><td>${P.SHOP_ITEMS.repair.price}</td></tr>
         <tr><td class="h-name">${ICONS.fuel}<span><b>Treibstoff</b><small>Tasten A/D, ◀ ▶</small></span></td>
           <td>Zu Beginn jeder Runde ${P.ROUND_FUEL}; Rest verfällt am Rundenende. Fahren kostet 1 pro Pixel, bergauf zusätzlich
           ${P.CLIMB[0].uphillCost} pro Pixel Höhe. Ohne Kletterketten schafft der Panzer Steigungen bis ${String(P.CLIMB[0].maxSlope).replace('.', ',')} : 1;

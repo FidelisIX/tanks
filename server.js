@@ -161,7 +161,7 @@ function publicTanks(room) {
     id: t.id, name: t.name, color: t.color, x: t.x, y: t.y, hp: t.hp, maxHp: t.maxHp, alive: t.alive,
     angle: t.angle, power: t.power, maxPower: t.maxPower, weapon: t.weapon, ammo: t.ammo,
     shield: t.shield, shieldMax: t.shieldMax, shieldLeft: t.inv.shields, fuel: t.inv.fuel,
-    teleports: t.inv.teleports || 0, climber: t.inv.upgrades.climber || 0,
+    teleports: t.inv.teleports || 0, repairs: t.inv.repairs || 0, climber: t.inv.upgrades.climber || 0,
   }));
 }
 
@@ -403,6 +403,7 @@ function buy(room, player, msg) {
     player.money -= price;
     if (msg.item === 'shield') player.inv.shields += item.qty;
     else if (msg.item === 'teleport') player.inv.teleports = (player.inv.teleports || 0) + item.qty;
+    else if (msg.item === 'repair') player.inv.repairs = (player.inv.repairs || 0) + item.qty;
     else if (msg.item === 'fuel') player.inv.fuel += item.qty;
     else player.inv.ammo[msg.item] += item.qty;
   }
@@ -558,6 +559,18 @@ function raiseShield(room, tank) {
   setTurnTimer(room, 1500);
 }
 
+// Repairing uses up the turn, like the shield.
+function repair(room, tank) {
+  const g = room.game;
+  if (!(tank.inv.repairs > 0) || tank.hp >= tank.maxHp) return;
+  const heal = Math.min(P.REPAIR_HP, tank.maxHp - tank.hp);
+  tank.hp += heal;
+  tank.inv.repairs--;
+  g.phase = 'anim';
+  broadcast(room, { type: 'repair', id: tank.id, heal, tanks: publicTanks(room) });
+  setTurnTimer(room, 1500);
+}
+
 // Teleporting uses up the turn. The target must be on the map and not right next to another tank.
 function teleport(room, tank, x) {
   const g = room.game;
@@ -623,6 +636,7 @@ function scheduleBotTurn(room, bot) {
     const tank = g.tanks[g.turnIdx];
     const plan = Bot.decide(g, tank, bot.difficulty);
     if (plan.shield) return raiseShield(room, tank);
+    if (plan.repair) return repair(room, tank);
     setAim(room, tank, plan);
     g.timer = setTimeout(() => {
       if (room.state === 'playing' && g.currentId === bot.id && g.phase === 'aim') fire(room, tank);
@@ -1021,6 +1035,9 @@ wss.on('connection', (ws) => {
         break;
       case 'teleport':
         if (myTurn(room)) teleport(room, room.game.tanks[room.game.turnIdx], msg.x);
+        break;
+      case 'repair':
+        if (myTurn(room)) repair(room, room.game.tanks[room.game.turnIdx]);
         break;
       case 'move': {
         if (!myTurn(room)) return;
