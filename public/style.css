@@ -96,6 +96,9 @@ canvas {
 .ctl { flex: 1 1 140px; }
 .ctl label { flex-direction: row; justify-content: space-between; }
 .ctl input { width: 100%; accent-color: var(--accent); }
+.ctl-row { display: flex; align-items: center; gap: 6px; }
+.ctl-row input { flex: 1; min-width: 0; }
+button.step { width: 38px; height: 34px; padding: 0; font-size: 16px; font-weight: 700; flex: none; touch-action: none; user-select: none; -webkit-user-select: none; }
 #weapons { display: flex; gap: 6px; flex-wrap: wrap; flex: 0 1 auto; }
 #weapons button { font-size: 13px; padding: 8px 10px; }
 #weapons button.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
@@ -197,6 +200,8 @@ select {
 label.inline { flex-direction: row; align-items: center; justify-content: space-between; }
 #drive { display: flex; align-items: center; gap: 6px; }
 #drive button { padding: 8px 12px; touch-action: none; user-select: none; }
+#drive { flex-wrap: wrap; }
+.drive-label { color: var(--muted); font-size: 13px; }
 #fuel { min-width: 56px; text-align: center; color: var(--muted); font-size: 13px; }
 
 #overlay { overflow-y: auto; padding: 12px; }

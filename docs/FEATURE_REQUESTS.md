@@ -60,3 +60,4 @@ Vorschlag: die bisherigen Wegwerf-Tests (WebSocket-Bots, Playwright) als `npm te
 | F-040 | Testspiel: Hot Shower – Dreierfächer aus drei kleineren Atombomben (80 px, 60 Schaden), Shop 220 | `279130a` |
 | F-041 | Optische Varianten: Tageszeit pro Runde (Tag, Morgen, Abend, Nacht; Sonne/Mond, Wolken, Sterne, Lichtfarbe) und eigenes Aussehen je Kartentyp (Wüste, roter Fels mit Schichten, Inseln mit Strand) | `046b5ff` |
 | F-042 | Berge deutlich bergiger (höchster Gipfel im Median y 259 → 113, Höhenunterschied 274 → 395 px) mit Schneekappen und Schnee-/Felstextur; Schneegrenze passt sich jeder Karte an; weiche Obergrenze statt abgeschnittener Gipfel (46 → 0 von 200 Karten) | `046b5ff` |
+| F-043 | Tasten fürs Handy zum Verstellen von Winkel (↶ ↷) und Kraft (− +): Tippen = 1 Schritt, Halten wiederholt immer schneller; Fahr-Tasten beschriftet, damit man sie nicht mit den Winkel-Tasten verwechselt | dieser Commit |

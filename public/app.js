@@ -452,7 +452,7 @@
   function updateControls() {
     const t = myTank();
     const mine = isMyTurn();
-    for (const id of ['angle', 'power', 'btn-fire', 'btn-left', 'btn-right']) $(id).disabled = !mine;
+    for (const id of ['angle', 'power', 'btn-fire', 'btn-left', 'btn-right', 'angle-up', 'angle-down', 'power-up', 'power-down']) $(id).disabled = !mine;
     if (t) {
       $('power').max = t.maxPower;
       $('fuel').textContent = `⛽ ${Math.floor(t.fuel)}`;
@@ -1302,6 +1302,33 @@
       send({ type: 'leave' });
     }
   };
+  // step buttons for angle and power (made for touch screens): one tap = 1 step; holding repeats,
+  // first after a short pause, then faster and faster
+  for (const [id, change] of [
+    ['angle-up', () => ({ angle: myTank().angle + 1 })],
+    ['angle-down', () => ({ angle: myTank().angle - 1 })],
+    ['power-up', () => ({ power: myTank().power + 1 })],
+    ['power-down', () => ({ power: myTank().power - 1 })],
+  ]) {
+    const btn = $(id);
+    let timer = null;
+    const stop = () => clearTimeout(timer);
+    const step = (delay) => {
+      if (!isMyTurn()) return;
+      setAim(change());
+      timer = setTimeout(() => step(Math.max(30, delay * 0.85)), delay);
+    };
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      stop();
+      if (!isMyTurn()) return;
+      setAim(change());
+      timer = setTimeout(() => step(110), 380);
+    });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, stop);
+    btn.addEventListener('contextmenu', (e) => e.preventDefault()); // long press on phones
+  }
+
   for (const [id, dir] of [['btn-left', -1], ['btn-right', 1]]) {
     const btn = $(id);
     const stop = () => clearInterval(driveTimer);

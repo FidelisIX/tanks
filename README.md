@@ -22,7 +22,7 @@ Stärke, Richtung = Windrichtung) und die verbleibende Zugzeit.
 
 Alle Werte zu Waffen, Schild und Upgrades stehen in der **Hilfe im Spiel** (Knopf „?“, Taste H, Link im Menü und im Shop)
 und in [docs/WAFFEN.md](docs/WAFFEN.md).
-Auf dem Handy über Schieberegler und Buttons.
+Auf dem Handy über Schieberegler und Tasten: ↶ ↷ drehen das Rohr, − + ändern die Kraft (Tippen = 1 Schritt, Halten wiederholt).
 
 | Waffe | Wirkung | Munition |
 |---|---|---|

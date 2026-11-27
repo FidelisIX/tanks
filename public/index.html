@@ -93,14 +93,23 @@
       <div id="controls">
         <div class="ctl">
           <label>Winkel <span><b id="angle-val"></b>°</span></label>
-          <input id="angle" type="range" min="0" max="180" step="1" disabled />
+          <div class="ctl-row">
+            <button id="angle-up" class="step" title="Rohr nach links drehen (←)" disabled>↶</button>
+            <input id="angle" type="range" min="0" max="180" step="1" disabled />
+            <button id="angle-down" class="step" title="Rohr nach rechts drehen (→)" disabled>↷</button>
+          </div>
         </div>
         <div class="ctl">
           <label>Kraft <b id="power-val"></b></label>
-          <input id="power" type="range" min="10" max="100" step="1" disabled />
+          <div class="ctl-row">
+            <button id="power-down" class="step" title="weniger Kraft (↓)" disabled>−</button>
+            <input id="power" type="range" min="10" max="100" step="1" disabled />
+            <button id="power-up" class="step" title="mehr Kraft (↑)" disabled>+</button>
+          </div>
         </div>
         <div id="weapons"></div>
         <div id="drive">
+          <span class="drive-label">Fahren</span>
           <button id="btn-left" title="Nach links fahren (A)" disabled>◀</button>
           <span id="fuel"></span>
           <button id="btn-right" title="Nach rechts fahren (D)" disabled>▶</button>
