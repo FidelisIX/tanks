@@ -26,6 +26,13 @@ zuletzt beigetretenen Tabs übernehmen. Für normale Nutzung (ein Spieler pro Ge
 diese Zeit, auch für andere Räume. Wie lange genau, ist **nicht gemessen**. Bei vielen gleichzeitigen Räumen mit
 Bots prüfen.
 
+### B-017 – Statistik aus dem Hauptmenü nicht aufrufbar
+Meldung des Besitzers (2026-11-27). Live nicht nachgestellt: Auf Laptop (1366 × 768) und Handy (Pixel 7) öffnet der Link
+https://krater-kommando.onrender.com/statistik.html ohne Fehler (zeigt 1 Match). Auffällig: Der Link war ein kleiner grauer
+Text und leicht zu übersehen; im Warteraum gab es ihn gar nicht. Jetzt Knöpfe „📊 Statistik & Rekorde“ und „❓ Waffen & Upgrades“
+im Hauptmenü und im Warteraum. Offen, bis der Besitzer sagt, was genau nicht ging (Link nicht gefunden / Klick ohne Wirkung /
+Fehlerseite / im Raum).
+
 ## So gewollt
 
 ### B-006 – Ohne Token sind Statistik und Räume nach einem Neustart weg
